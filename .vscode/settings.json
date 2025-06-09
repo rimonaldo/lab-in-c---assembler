@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.as": "asm",
+        "pre_assembler.h": "c",
+        "macro_table.h": "c"
+    }
+}
