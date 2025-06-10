@@ -1,0 +1,34 @@
+# Ignore build output directories
+/bin/
+/build/
+
+# Ignore object files and executables
+*.o
+*.out
+*.exe
+*.obj
+*.elf
+
+# Ignore dependency files (if used)
+*.d
+
+# Ignore temporary files
+*~
+*.swp
+*.tmp
+*.log
+
+# Ignore preprocessed output
+*.am
+
+# Ignore core dumps
+core
+
+# Ignore VSCode settings (optional, if you don't want to track them)
+.vscode/
+
+# Ignore compiled binary for the project
+am
+
+# Ignore Mac/Linux metadata files
+.DS_Store
