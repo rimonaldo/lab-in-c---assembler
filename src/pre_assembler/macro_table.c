@@ -56,20 +56,18 @@ const Macro *get_macro(const MacroTable *table, const char *name)
     int i;
     for (i = 0; i < table->count; i++)
     {
-        printf("🔍 🔍comparing %s with: %s\n", name, table->macros[i].name);
+        printf("\t🔍 🔍comparing %s with: %s\n", name, table->macros[i].name);
 
         if (strcmp(table->macros[i].name, name) == 0)
         {
             if (table->macros[i].line_count == 0)
             {
-                fprintf(stderr, "⚠️ Warning: Macro '%s' has no lines\n", table->macros[i].name);
+                fprintf(stderr, "⚠️  Warning: Macro '%s' has no lines\n", table->macros[i].name);
             }
-
-            printf("Found macro!!!!: %s\n", table->macros[i].name);
             return &table->macros[i];
         }
     }
-    return NULL; /*Not found*/
+    return NULL;
 }
 
 void expand_macro(MacroTable *table, const char *name, FILE *output)
@@ -87,7 +85,7 @@ void expand_macro(MacroTable *table, const char *name, FILE *output)
 
             for (j = 0; j < table->macros[i].line_count; ++j)
             {
-                printf("🔴 Writing macro line to output: %s", table->macros[i].lines[j]);
+                printf("📝 Writing macro line to output: %s", table->macros[i].lines[j]);
                 fputs(table->macros[i].lines[j], output);
             }
             return;

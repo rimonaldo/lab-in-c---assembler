@@ -1,33 +1,45 @@
-; Sample macro definitions
-mcro GOTO
-    jmp END
+; Macro definitions
+
+mcro INIT_REGS
+    mov r0, #0
+    mov r1, #0
+    mov r2, #0
 mcroend
 
-mcro LOAD_REG
-    mov r1, r2
-    mov r3, r4
+mcro CLEAR_FLAGS
+    clr flag1
+    clr flag2
 mcroend
 
 mcro EMPTY_MACRO
 mcroend
 
-; Some code before macros
-start:  mov r0, #5
+mcro JUMP_TO_END
+    jmp END
+mcroend
 
-; Call to macro GOTO
-GOTO
+; Program start
 
-; Normal instructions
-add r1, r0
-sub r2, r3
+start:
+    ; Initialize registers
+    INIT_REGS
 
-; Call to macro LOAD_REG
-LOAD_REG
+    ; Clear flags
+    CLEAR_FLAGS
 
-; Call to empty macro
-EMPTY_MACRO
+    ; Call empty macro - should produce no output
+    EMPTY_MACRO
 
-; Label and stop
-END:    stop
+    ; Normal instructions
+    mov r3, r4
+    add r3, r5
 
-; End of file
+    ; Jump to end
+    JUMP_TO_END
+
+    ; These instructions should be skipped by jump
+    sub r5, r6
+    mov r7, r8
+
+END:
+    stop
