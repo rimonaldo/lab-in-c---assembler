@@ -3,6 +3,7 @@
         "*.as": "asm",
         "pre_assembler.h": "c",
         "macro_table.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "tokenizer.h": "c"
     }
 }

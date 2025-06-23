@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "pre_assembler.h"
+#include "preprocessor.h"
 #include "macro_table.h"
-#include "../tokenizer/tokenizer.h"
+#include "../common/tokenizer/tokenizer.h"
 
 const Macro *CURR_MACRO = NULL;
 
@@ -30,7 +30,7 @@ int run_pre_assembler(const char *filename)
     init_macro_table(&table);
 
     FILE *input = fopen(filename, "r");
-    FILE *output = fopen("output.am", "w");
+    FILE *output = fopen("output/output.am", "w");
 
     if (!input)
     {
@@ -108,7 +108,7 @@ int run_pre_assembler(const char *filename)
 
         case M_OTHER:
 
-            if(is_comment(tokenized_line.tokens[0]))
+            if (is_comment(tokenized_line.tokens[0]))
             {
                 printf("Comment detected: %s", line);
                 fputs(line, output);

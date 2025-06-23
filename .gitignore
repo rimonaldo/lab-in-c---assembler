@@ -1,6 +1,7 @@
 # Ignore build output directories
 /bin/
 /build/
+/output/
 
 # Ignore object files and executables
 *.o
