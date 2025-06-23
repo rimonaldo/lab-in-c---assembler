@@ -28,8 +28,22 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 # Clean intermediate and output files
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) output
 
-# Run default input file
+# Run on a specific program folder: make run PROG=prog1
+# Otherwise, run on all programs
 run: all
-	./$(OUT) input/prog1.as
+	@mkdir -p output
+ifeq ($(PROG),)
+	@echo "🔁 Running on all programs in input/* ..."
+	@find input -type f -name '*.as' | while read f; do \
+		echo "🔧 Processing $$f..."; \
+		./$(OUT) "$$f"; \
+	done
+else
+	@echo "▶️  Running only on input/$(PROG) ..."
+	@find input/$(PROG) -type f -name '*.as' | while read f; do \
+		echo "🔧 Processing $$f..."; \
+		./$(OUT) "$$f"; \
+	done
+endif
