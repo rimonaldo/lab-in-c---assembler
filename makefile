@@ -25,6 +25,6 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
-
+	
 run: all
-	./$(OUT) src/pre_assembler/input.as
+	./$(OUT) input.as

@@ -30,7 +30,7 @@ int run_pre_assembler(const char *filename)
     init_macro_table(&table);
 
     FILE *input = fopen(filename, "r");
-    FILE *output = fopen("output.am", "w");
+    FILE *output = fopen("input.am", "w");
 
     if (!input)
     {
