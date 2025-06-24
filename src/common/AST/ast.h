@@ -1,9 +1,9 @@
 #ifndef AST_H
 #define AST_H
 
-/*================================
-/* Type Definitions(Enums) /*
-/*===============================*/
+/*===============================
+  Type Definitions (Enums)
+===============================*/
 
 typedef enum
 {
@@ -19,9 +19,9 @@ typedef enum
     CMP,
     ADD,
     SUB,
-    LEA,
     NOT,
     CLR,
+    LEA ,
     INC,
     DEC,
     JMP,
@@ -30,7 +30,7 @@ typedef enum
     PRN,
     JSR,
     RTS,
-    STOP
+    STOP = 15
 } Opcode;
 
 typedef enum
@@ -43,31 +43,32 @@ typedef enum
 
 typedef enum
 {
-    INSTRUCTION,
-    DIRECTIVE
+    INSTRUCTION_STATEMENT,
+    DIRECTIVE_STATEMENT
 } StatementType;
 
-/*================================
-/* Struct Definitions /*
-/*===============================*/
+/*===============================
+  Struct Definitions
+===============================*/
 
-/*@brief single operand*/
+/* Operand with addressing mode */
 typedef struct Operand
 {
     AddressingMode mode;
     union
     {
-        int immediate_val; /*for IMMEDIATE*/
-        char *label;       /*for DIRECT*/
-        int reg_num;       /*for DIRECT_REGISTER*/
-        struct
-        { /*for INDEX (matrix access)*/
-            char *label;
-            int reg_num;
+        int immediate_value; /* for IMMEDIATE */
+        char *label;         /* for DIRECT */
+        int reg_num;         /* for DIRECT_REGISTER */
+        struct               /* for MATRIX_ACCESS */
+        {
+            char *label; /* label of the matrix */
+            int reg_num; /* register holding the index */
         } index;
     } value;
 } Operand;
 
+/* Instruction details */
 typedef struct InstructionInfo
 {
     Opcode opcode;
@@ -76,6 +77,7 @@ typedef struct InstructionInfo
     Operand dest_op;
 } InstructionInfo;
 
+/* Directive details */
 typedef struct DirectiveInfo
 {
     DirectiveType type;
@@ -85,32 +87,35 @@ typedef struct DirectiveInfo
         {
             int *values;
             int size;
-        } data;      /*for DATA*/
-        char *str;   /*for STRING*/
-        char *label; /*for ENTRY or EXTERN*/
+        } data;      /* for DATA directive */
+        char *str;   /* for STRING directive */
+        char *label; /* for ENTRY or EXTERN directives */
     } params;
 } DirectiveInfo;
 
+/* AST Node */
 typedef struct ASTNode
 {
-    int line_number;
-    char *label;        /*either label or NULL*/
-    StatementType type; /* either INSTRUCTION or DIRECTIVE*/
+    int line_number;    /* source code line number */
+    char *label;        /* label or NULL */
+    StatementType type; /* INSTRUCTION_STATEMENT or DIRECTIVE_STATEMENT */
     union
     {
         InstructionInfo instruction;
         DirectiveInfo directive;
     } content;
 
-    struct ASTNode *next; /* pointer to the next node in the list */
+    struct ASTNode *next; /* pointer to next AST node */
 } ASTNode;
 
-/*================================
-/* Function Prototypes /*
-/*===============================*/
+/*===============================
+  Function Prototypes
+===============================*/
 
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
 void free_ast(ASTNode *head);
+void free_instruction_node(InstructionInfo instruction);
+void free_directive_node(DirectiveInfo directive);
 
-#endif
+#endif /* AST_H */
