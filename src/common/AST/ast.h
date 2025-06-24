@@ -21,7 +21,7 @@ typedef enum
     SUB,
     NOT,
     CLR,
-    LEA ,
+    LEA,
     INC,
     DEC,
     JMP,
@@ -54,7 +54,6 @@ typedef enum
 /* Operand with addressing mode */
 typedef struct Operand
 {
-    AddressingMode mode;
     union
     {
         int immediate_value; /* for IMMEDIATE */
@@ -66,6 +65,7 @@ typedef struct Operand
             int reg_num; /* register holding the index */
         } index;
     } value;
+    AddressingMode mode;
 } Operand;
 
 /* Instruction details */
