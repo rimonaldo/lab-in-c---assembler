@@ -115,8 +115,5 @@ typedef struct ASTNode
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
 void free_ast(ASTNode *head);
-void free_operand(Operand *op);
-void free_instruction_contents(InstructionInfo *inst);
-void free_directive_contents(DirectiveInfo *dir);
 
 #endif /* AST_H */
