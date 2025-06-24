@@ -9,8 +9,8 @@ typedef enum
 {
     IMMEDIATE,
     DIRECT,
-    MATRIX_ACCESS,
-    DIRECT_REGISTER
+    INDEX,
+    REGISTER
 } AddressingMode;
 
 typedef enum
@@ -115,7 +115,5 @@ typedef struct ASTNode
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
 void free_ast(ASTNode *head);
-void free_instruction_node(InstructionInfo instruction);
-void free_directive_node(DirectiveInfo directive);
 
 #endif /* AST_H */
