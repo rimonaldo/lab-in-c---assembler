@@ -51,7 +51,6 @@ typedef enum
   Struct Definitions
 ===============================*/
 
-/* Operand with addressing mode */
 typedef struct Operand
 {
     union
@@ -68,7 +67,6 @@ typedef struct Operand
     AddressingMode mode;
 } Operand;
 
-/* Instruction details */
 typedef struct InstructionInfo
 {
     Opcode opcode;
@@ -77,7 +75,6 @@ typedef struct InstructionInfo
     Operand dest_op;
 } InstructionInfo;
 
-/* Directive details */
 typedef struct DirectiveInfo
 {
     DirectiveType type;
@@ -93,7 +90,6 @@ typedef struct DirectiveInfo
     } params;
 } DirectiveInfo;
 
-/* AST Node */
 typedef struct ASTNode
 {
     int line_number;    /* source code line number */
