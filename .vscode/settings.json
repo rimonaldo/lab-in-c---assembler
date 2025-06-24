@@ -4,6 +4,8 @@
         "pre_assembler.h": "c",
         "macro_table.h": "c",
         "typeinfo": "c",
-        "tokenizer.h": "c"
+        "tokenizer.h": "c",
+        "string.h": "c",
+        "ast.h": "c"
     }
 }
