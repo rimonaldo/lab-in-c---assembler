@@ -37,6 +37,7 @@ typedef enum
 {
     DATA,
     STRING,
+    MAT,
     ENTRY,
     EXTERN
 } DirectiveType;
@@ -108,8 +109,24 @@ typedef struct ASTNode
   Function Prototypes
 ===============================*/
 
+/* AST node builders*/
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
+
+/* Operand builders */
+Operand *create_immediate_operand(int value);
+Operand *create_direct_operand(const char *label);
+Operand *create_register_operand(int reg_num);
+Operand *create_index_operand(const char *label, int reg_num);
+
+/* statement builders */
+InstructionInfo *create_instruction_info();
+DirectiveInfo *create_directive_info();
+
+/* destroy structs */
 void free_ast(ASTNode *head);
+void free_operand(Operand *op);
+void free_instruction_contents(InstructionInfo *inst);
+void free_directive_contents(DirectiveInfo *dir);
 
 #endif /* AST_H */
