@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "first_pass.h"
@@ -5,149 +6,221 @@
 #include "../common/table/table.h"
 #include "../common/tokenizer/tokenizer.h"
 
+/*====================================================*/
+/*                  First Pass Driver                 */
+/*====================================================*/
+
 void run_first_pass(char *filename)
 {
     int IC = 0;
     int DC = 0;
-    bool is_label_declare = false;
-    bool is_directive = false;
-    bool is_ext_ent = false;
+    int is_label = false;
+    int is_directive = false;
+    int is_ext_ent = false;
     Table *symbol_table = table_create();
     FILE *file = fopen(filename, "r");
-    printf("FILENAME IS: \n %s\n\n", filename);
+    char line[1024];
+    int line_number = 1;
+    Tokens tokenized_line;
+    char *leader;
+
+    printf("FILENAME IS:\n%s\n\n", filename);
+
     if (file == NULL)
     {
         perror("Error opening file");
         return;
     }
-    char line[1024];
 
     while (fgets(line, sizeof(line), file))
     {
-        printf("%s", line);
-        Tokens tokenized_line = tokenize_line(line);
-        char *leader = tokenized_line.tokens[0];
+        printf("\n=== [Line %d] ===============================\n", line_number);
+        printf("Raw Line: %s", line);
 
-        /* if first token is a label declaration*/
-        if (is_label(leader))
+        tokenized_line = tokenize_line(line);
+        leader = tokenized_line.tokens[0];
+        printf("First Token: %s\n", leader);
+
+        if (is_label_declare(leader))
         {
-            /* if it's not declared before */
+            printf("Detected label: %s\n", leader);
             if (!table_lookup(symbol_table, leader))
             {
-                /* enter label to symbol table */
+                printf("Label '%s' is new — inserting into symbol table.\n", leader);
             }
             else
             {
-                /* add to error list -> label already declared*/
+                printf("ERROR: Label '%s' already declared.\n", leader);
             }
-            /* create an ast node starting from tokens[1] to termination of line */
         }
-
-        if (is_instruction_line(tokenized_line))
+        else if (is_instruction_line(tokenized_line))
         {
-            parse_instruction_line(DC, tokenized_line);
+            printf("Instruction detected.\n");
+            parse_instruction_line(line_number, DC, tokenized_line);
         }
         else if (is_directive_line(tokenized_line))
         {
+            printf("Directive detected.\n");
             parse_directive_line(DC, tokenized_line);
         }
+
+        line_number++;
     }
 
     fclose(file);
 }
 
-ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line)
+/*====================================================*/
+/*               Instruction & Directive              */
+/*====================================================*/
+
+ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
 {
-    char *init_label = NULL;
     InstructionInfo *info = create_instruction_info();
-    ASTNode *instrucion_node = create_instruction_node(line_num, init_label, *info);
     Opcode opcode = get_opcode(tokenized_line.tokens[0]);
-    int expected_num_op = operands_expected(opcode);
+    int expected_num_op = expect_operands(opcode);
     info->opcode = opcode;
+
+    printf("Parsing instruction line #%d\n", line_num);
+    printf("Opcode: %d, Expected operands: %d\n", opcode, expected_num_op);
 
     switch (expected_num_op)
     {
-    case 0:
-    {
-        /* 15 and 14 : are zero operand instructions */
-        /*      no need to parse any operand*/
-    }
-    break;
     case 1:
-    {
-        /* 13 to 5  : are one operand instructions */
-        /*      parse dest_operand*/
-        parse_operand((&(info->dest_op)), tokenized_line);
-    }
-    break;
+        printf("Parsing one operand (dest)...\n");
+        parse_operand(&(info->dest_op), tokenized_line, 1);
+        break;
     case 2:
-    {
-        /* 4 to 0  : are two operand instructions */
-        /*      parse src_operand*/
-        /*      parse dest_operand*/
-        parse_operand((&(info->src_op)), tokenized_line);
-        parse_operand((&(info->dest_op)), tokenized_line);
-    }
-    break;
+        printf("Parsing two operands (src, dest)...\n");
+        parse_operand(&(info->src_op), tokenized_line, 1);
+        parse_operand(&(info->dest_op), tokenized_line, 2);
+        break;
     default:
+        printf("Zero operands or unknown.\n");
+        break;
+    }
+
+    return create_instruction_node(line_num, NULL, *info);
+}
+
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
+{
+    DirectiveInfo *info;
+    info = malloc(sizeof(DirectiveInfo));
+    if (!info) {
+        printf("Failed to allocate DirectiveInfo\n");
+        return NULL;
+    }
+    info->type = DATA;
+    info->params.data.values = 2;
+    info->params.data.size = 1;
+    info->type = 0; 
+    return create_directive_node(line_num, ".data", *info);
+}
+
+/*====================================================*/
+/*                 Operand Parsing Utils              */
+/*====================================================*/
+
+void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+{
+    printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
+
+    operand_to_parse->mode = get_mode(tokenized_line, token_idx);
+    printf("Detected addressing mode: %d\n", operand_to_parse->mode);
+
+    switch (operand_to_parse->mode)
+    {
+    case IMMEDIATE:
+        operand_to_parse->value.immediate_value = atoi(tokenized_line.tokens[token_idx] + 1);
+        printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
+        break;
+    case DIRECT:
+        operand_to_parse->value.label = strdup(tokenized_line.tokens[token_idx]);
+        printf("Direct label: %s\n", operand_to_parse->value.label);
+        break;
+    case REGISTER:
+        operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
+        printf("Register number: %d\n", operand_to_parse->value.reg_num);
+        break;
+    case MAT:
+        operand_to_parse->value.index.label = strdup(tokenized_line.tokens[token_idx]);
+        operand_to_parse->value.index.reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
+        printf("Matrix label: %s, Register index: %d\n",
+               operand_to_parse->value.index.label,
+               operand_to_parse->value.index.reg_num);
+        break;
+    default:
+        printf("Unknown operand mode.\n");
         break;
     }
 }
 
-void parse_directive_line(int line_num, Tokens tokenized_line)
+AddressingMode get_mode(Tokens tokenized_line, int token_idx)
 {
+    char *value = tokenized_line.tokens[token_idx];
+    if (is_label(value))
+        return DIRECT;
+    return DIRECT;
 }
 
-/* HELPER FUNCTIONS */
+/*====================================================*/
+/*                Label & Directive Utils             */
+/*====================================================*/
 
-int operands_expected(Opcode opcode)
+int is_label_declare(char *token)
 {
-    switch (opcode)
+    int len = strlen(token);
+    return (is_label(token) && token[len - 1] == ':');
+}
+
+int is_label(char *token)
+{
+    int i;
+    int len;
+
+    if (!token)
     {
-    case 0: /* mov */
-    case 1: /* cmp */
-    case 2: /* add */
-    case 3: /* sub */
-    case 6: /* lea */
-        return 2;
-    case 4:  /* not */
-    case 5:  /* clr */
-    case 7:  /* inc */
-    case 8:  /* dec */
-    case 9:  /* jmp */
-    case 10: /* bne */
-    case 11: /* red */
-    case 12: /* prn */
-    case 13: /* jsr */
-        return 1;
-    case 14: /* rts */
-    case 15: /* stop */
-        return 0;
-    default:
-        return -1; /* Invalid opcode */
+        return false;
     }
+
+    len = strlen(token);
+
+    if (len == 0 || len > 31)
+    {
+        return false;
+    }
+
+    if (!((token[0] >= 'A' && token[0] <= 'Z') || (token[0] >= 'a' && token[0] <= 'z')))
+    {
+        return false;
+    }
+
+    for (i = 1; i < len - 1; i++)
+    {
+        if (!((token[i] >= 'A' && token[i] <= 'Z') ||
+              (token[i] >= 'a' && token[i] <= 'z') ||
+              (token[i] >= '0' && token[i] <= '9')))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
-/*@brief validates all syntax rules for valid label name*/
-/*
-    *Starts with an alphabetic character (a-z, A-Z).
-       Followed by zero or more alphanumeric characters.
-       Terminated by a colon (:)
-       Maximum length: 30 characters.
-       Case-sensitive.
-       Not a reserved word (instruction name, directive name, register name).
-       */
-bool is_label(char *token)
+int is_directive_line(Tokens tokenized_line)
 {
-    if (token)
+    char dir_prefix;
+    char *dir_name;
 
-        return true;
-}
+    if (tokenized_line.tokens[0] == NULL || strlen(tokenized_line.tokens[0]) < 2)
+    {
+        return false;
+    }
 
-bool is_directive_line(Tokens tokenized_line)
-{
-    char dir_prefix = tokenized_line.tokens[0][0];
-    char *dir_name = &tokenized_line.tokens[0][1];
+    dir_prefix = tokenized_line.tokens[0][0];
+    dir_name = &tokenized_line.tokens[0][1];
 
     if (dir_prefix != '.')
         return false;
@@ -157,4 +230,36 @@ bool is_directive_line(Tokens tokenized_line)
             strcmp(dir_name, "mat") == 0 ||
             strcmp(dir_name, "entry") == 0 ||
             strcmp(dir_name, "extern") == 0);
+}
+
+/*====================================================*/
+/*                  Miscellaneous Utils               */
+/*====================================================*/
+
+int expect_operands(Opcode opcode)
+{
+    switch (opcode)
+    {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 6:
+        return 2;
+    case 4:
+    case 5:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+        return 1;
+    case 14:
+    case 15:
+        return 0;
+    default:
+        return -1;
+    }
 }
