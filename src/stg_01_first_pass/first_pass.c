@@ -53,24 +53,6 @@ void run_first_pass(char *filename)
         }
     }
 
-    /* parse line */
-    /* if the first token is a symbol definition than add to symbol table */
-    /* parse rest of line and create ast node */
-    /* read - .entry MAIN directive -> that declares MAIN as an entry point (for linker) */
-    /* כאן אכניס לרשימת הנחיות כניסה את הסמל */
-    /* read - SIZE:   .data 2 -> |add to symble table, IC = 1 | SIZE now is a constant with value 2*/
-    /*      הכנסת סמל לטבלת סמלים */
-    /*      יצירת צומת הנחיה לשמירת מספר */
-    /* read - SUM:    .data 0 -> |add to symble table, IC = 2 | MAT is now a matrix with these values */
-    /*      יצירת צומת הנחיה לשמירת מספר */
-    /*      הכנסת סמל לטבלה */
-    /* read - MAT:    .mat [2][2] 10, -3, 8, 5 -> |add to symble table, IC = 3 | MAT is now a matrix with these values */
-    /*      הכנסת סמל לטבלה */
-    /*      יצירת צומת הנחיה לשמירת מספר */
-    /* read - MAIN -> |add to symble table, IC = 0, IC = 4, has entry att | */
-    /* read - clr     r0 -> sets r0 to zero */
-    /* read - mov     SIZE, r1 ->  r1 is 2 (the )*/
-    /* read - dec     r1 -> */
     fclose(file);
 }
 
@@ -107,34 +89,9 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line)
         parse_operand((&(info->dest_op)), tokenized_line);
     }
     break;
-
     default:
         break;
     }
-    /* commented code
-    switch (src_mode)
-    {
-        case IMMEDIATE:
-    {
-    }
-    break;
-    case DIRECT:
-    {
-    }
-    break;
-    case INDEX:
-    {
-    }
-    break;
-    case REGISTER:
-    {
-    }
-    break;
-
-    default:
-    break;
-    }
-*/
 }
 
 void parse_directive_line(int line_num, Tokens tokenized_line)
@@ -142,10 +99,9 @@ void parse_directive_line(int line_num, Tokens tokenized_line)
 }
 
 /* HELPER FUNCTIONS */
+
 int operands_expected(Opcode opcode)
 {
-
-    /* Determine the number of operands expected for each opcode */
     switch (opcode)
     {
     case 0: /* mov */
