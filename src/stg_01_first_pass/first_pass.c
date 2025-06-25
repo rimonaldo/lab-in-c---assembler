@@ -39,7 +39,7 @@ void run_first_pass(char *filename)
 
         tokenized_line = tokenize_line(line);
         leader = tokenized_line.tokens[0];
-        printf("First Token: %s\n", leader);
+        printf("First Token (leader): %s\n", leader);
 
         if (is_label_declare(leader))
         {
@@ -52,13 +52,17 @@ void run_first_pass(char *filename)
             {
                 printf("ERROR: Label '%s' already declared.\n", leader);
             }
+
+            leader = leader = tokenized_line.tokens[1];
+            printf("leader is now changed to: %s\n", leader);
         }
-        else if (is_instruction_line(tokenized_line))
+
+        if (is_instruction_line(leader))
         {
             printf("Instruction detected.\n");
             parse_instruction_line(line_number, DC, tokenized_line);
         }
-        else if (is_directive_line(tokenized_line))
+        else if (is_directive_line(leader))
         {
             printf("Directive detected.\n");
             parse_directive_line(DC, tokenized_line);
@@ -76,8 +80,8 @@ void run_first_pass(char *filename)
 
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
 {
-    InstructionInfo *info = create_instruction_info();
-    Opcode opcode = get_opcode(tokenized_line.tokens[0]);
+    InstructionInfo *info ;
+    Opcode opcode = get_code(tokenized_line.tokens[0]);
     int expected_num_op = expect_operands(opcode);
     info->opcode = opcode;
 
@@ -107,14 +111,15 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
 {
     DirectiveInfo *info;
     info = malloc(sizeof(DirectiveInfo));
-    if (!info) {
+    if (!info)
+    {
         printf("Failed to allocate DirectiveInfo\n");
         return NULL;
     }
     info->type = DATA;
     info->params.data.values = 2;
     info->params.data.size = 1;
-    info->type = 0; 
+    info->type = 0;
     return create_directive_node(line_num, ".data", *info);
 }
 
@@ -209,22 +214,72 @@ int is_label(char *token)
     return true;
 }
 
-int is_directive_line(Tokens tokenized_line)
+int is_instruction_line(char *leader)
+{
+    Opcode opcode = get_code(leader);        /* get_code אמור להחזיר -1 אם לא חוקי */
+    return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
+}
+
+Opcode get_code(char *str)
+{
+    int res;
+    if (strcmp(str, "mov") == 0)
+        return 0;
+    if (strcmp(str, "cmp") == 0)
+        return 1;
+    if (strcmp(str, "add") == 0)
+        return 2;
+    if (strcmp(str, "sub") == 0)
+        return 3;
+    if (strcmp(str, "lea") == 0)
+        return 6;
+    if (strcmp(str, "clr") == 0)
+        return 4;
+    if (strcmp(str, "not") == 0)
+        return 5;
+    if (strcmp(str, "inc") == 0)
+        return 7;
+    if (strcmp(str, "dec") == 0)
+        return 8;
+    if (strcmp(str, "jmp") == 0)
+        return 9;
+    if (strcmp(str, "bne") == 0)
+        return 10;
+    if (strcmp(str, "red") == 0)
+        return 11;
+    if (strcmp(str, "prn") == 0)
+        return 12;
+    if (strcmp(str, "jsr") == 0)
+        return 13;
+    if (strcmp(str, "rts") == 0)
+        return 14;
+    if (strcmp(str, "stop") == 0)
+        return 15;
+    return -1;
+}
+
+int is_directive_line(char *leader)
 {
     char dir_prefix;
     char *dir_name;
 
-    if (tokenized_line.tokens[0] == NULL || strlen(tokenized_line.tokens[0]) < 2)
+    if (leader == NULL || strlen(leader) < 2)
     {
         return false;
     }
 
-    dir_prefix = tokenized_line.tokens[0][0];
-    dir_name = &tokenized_line.tokens[0][1];
+    dir_prefix = leader[0];
+    dir_name = &leader[1];
 
     if (dir_prefix != '.')
         return false;
 
+    return is_valid_directive_name(leader);
+}
+
+int is_valid_directive_name(char *directive)
+{
+    char *dir_name = directive + 1;
     return (strcmp(dir_name, "data") == 0 ||
             strcmp(dir_name, "string") == 0 ||
             strcmp(dir_name, "mat") == 0 ||

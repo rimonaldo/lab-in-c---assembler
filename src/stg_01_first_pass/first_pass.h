@@ -7,7 +7,9 @@ void run_first_pass(char *filename);
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line);
 int is_label_declare(char *token);
-int is_directive_line(Tokens tokenized_line);
+int is_instruction_line(char *leader);
+int is_directive_line(char *leader);
 AddressingMode get_mode(Tokens tokenized_line, int token_idx);
+Opcode get_code(char *str);
 
 #endif
