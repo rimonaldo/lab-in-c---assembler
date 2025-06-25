@@ -68,6 +68,18 @@ typedef struct Operand
     AddressingMode mode;
 } Operand;
 
+/**
+ * @brief Structure representing information about an assembly instruction.
+ *
+ * This structure holds the opcode, number of operands, and the source and
+ * destination operands for a single instruction in the abstract syntax tree (AST).
+ *
+ * @typedef InstructionInfo
+ * @param opcode      The operation code specifying the instruction type.
+ * @param num_operands The number of operands used by the instruction.
+ * @param src_op      The source operand for the instruction.
+ * @param dest_op     The destination operand for the instruction.
+ */
 typedef struct InstructionInfo
 {
     Opcode opcode;
