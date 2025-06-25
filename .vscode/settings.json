@@ -8,6 +8,7 @@
         "string.h": "c",
         "ast.h": "c",
         "first_pass.h": "c",
-        "preprocessor.h": "c"
+        "preprocessor.h": "c",
+        "table.h": "c"
     }
 }

@@ -1,0 +1,55 @@
+<program> ::= { <line> }
+
+<line> ::= [<label_definition>] <statement> | <macro_definition> | <comment_line> | <empty_line>
+
+<label_definition> ::= <label> ":"
+
+<statement> ::= <instruction_statement> | <directive_statement>
+
+<instruction_statement> ::= <opcode> [<operand_list>]
+
+<operand_list> ::= <operand> | <operand> "," <operand>
+
+<directive_statement> ::= ".data" <number_list>
+                        | ".string" <string_literal>
+                        | ".mat" "[" <number> "]" "[" <number> "]" <number_list>
+                        | ".entry" <label>
+                        | ".extern" <label>
+
+<macro_definition> ::= "mcro" <macro_name> <macro_body> "mcroend"
+
+<macro_body> ::= { <line> }
+
+<comment_line> ::= ";" <any_text>
+
+<empty_line> ::= ε
+
+<operand> ::= "#" <number>                       ; immediate
+            | <label>                            ; direct
+            | <label> "[" <register> "]" "[" <register> "]" ; matrix
+            | <register>                         ; direct register
+
+<number_list> ::= <number> { "," <number> }
+
+<number> ::= ["+" | "-"] <digit> { <digit> }
+
+<string_literal> ::= "\"" { <printable_char> } "\""
+
+<opcode> ::= "mov" | "cmp" | "add" | "sub" | "lea"
+           | "not" | "clr" | "inc" | "dec"
+           | "jmp" | "bne" | "red" | "prn" | "jsr"
+           | "rts" | "stop"
+
+<register> ::= "r0" | "r1" | "r2" | "r3" | "r4" | "r5" | "r6" | "r7"
+
+<label> ::= <letter> { <letter_or_digit> }
+
+<macro_name> ::= <label>                         ; same rules as label
+
+<letter> ::= "a" | ... | "z" | "A" | ... | "Z"
+<digit> ::= "0" | ... | "9"
+<letter_or_digit> ::= <letter> | <digit>
+
+<any_text> ::= { any character except newline }
+
+<printable_char> ::= any printable ASCII character except quote (")
