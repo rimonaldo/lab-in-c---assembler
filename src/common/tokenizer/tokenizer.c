@@ -6,7 +6,7 @@
 Tokens tokenize_line(const char *line)
 {
     Tokens result;
-    result.count = 0;
+    memset(&result, 0, sizeof(Tokens));
     int i = 0, len = strlen(line);
 
     while (i < len && result.count < MAX_TOKENS)
