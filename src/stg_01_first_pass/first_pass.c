@@ -14,49 +14,37 @@
                 __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
     } while (0)
 #else
-#define PRINT_DEBUG(fmt, ...) \
-    do                        \
-    {                         \
-    } while (0)
+#define PRINT_DEBUG(fmt, ...) do {} while (0)
 #endif
+
+#define PRINT_LINE(n)           printf("\n\033[1;36m[Line %d]\033[0m\n", n)
+#define PRINT_RAW_LINE(s)      printf("Raw:     %s", s)
+#define PRINT_TOKEN(t)         printf("Token:   %s\n", t)
+#define PRINT_LABEL_FOUND(l)   printf("\033[1;33mLabel Found:\033[0m %s\n", l)
+#define PRINT_LABEL_INSERT(l,a) printf("Inserted Label: '%s' @ %d\n", l, a)
+#define PRINT_LABEL_EXISTS(l)  printf("\033[1;31mLabel Error:\033[0m '%s' already exists\n", l)
+#define PRINT_INSTRUCTION(o)   printf("Instruction Detected: opcode = %d\n", o)
+#define PRINT_DIRECTIVE(s)     printf("Directive Detected: %s\n", s)
+#define PRINT_OPERAND(n,tok)   printf("Operand %d: %s\n", n, tok)
+#define PRINT_ADDR_MODE(s)     printf("Addressing Mode: %s\n", s)
 
 char *trim_whitespace(char *str)
 {
     static char trimmed[1024];
     int i = 0, j = 0;
-
-    if (!str)
-    {
-        trimmed[0] = '\0';
-        return trimmed;
-    }
-
-    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
-        i++;
-
-    for (; str[i] != '\0'; i++)
-    {
+    if (!str) { trimmed[0] = '\0'; return trimmed; }
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n') i++;
+    for (; str[i] != '\0'; i++) {
         if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
-        {
             trimmed[j++] = str[i];
-        }
     }
-
     trimmed[j] = '\0';
     return trimmed;
 }
 
-/*====================================================*/
-/*                  First Pass Driver                 */
-/*====================================================*/
-
 void run_first_pass(char *filename)
 {
-    int IC = 0;
-    int DC = 0;
-    int is_label = false;
-    int is_directive = false;
-    int is_ext_ent = false;
+    int IC = 0, DC = 0;
     Table *symbol_table = table_create();
     FILE *file = fopen(filename, "r");
     char line[1024];
@@ -64,84 +52,76 @@ void run_first_pass(char *filename)
     Tokens tokenized_line;
     char *leader;
 
-    printf("FILENAME IS:\n%s\n\n", filename);
-
-    if (file == NULL)
-    {
-        perror("Error opening file");
-        return;
-    }
+    if (!file) { perror("Error opening file"); return; }
+    printf("\n\033[1;35mFILENAME:\033[0m %s\n", filename);
 
     while (fgets(line, sizeof(line), file))
     {
-        printf("\n=== [Line %d] ===============================\n", line_number);
-        printf("Raw Line: %s", line);
+        PRINT_LINE(line_number);
+        PRINT_RAW_LINE(line);
 
         tokenized_line = tokenize_line(line);
         leader = tokenized_line.tokens[0];
-        printf("First Token (leader): %s\n", leader);
+        PRINT_TOKEN(leader);
 
         if (is_label_declare(leader))
         {
-            printf("Detected label: %s\n", leader);
+            PRINT_LABEL_FOUND(leader);
             if (!table_lookup(symbol_table, leader))
             {
-                printf("Label '%s' is new — inserting into symbol table.\n", leader);
+                char clean_label[strlen(leader)];
+                strncpy(clean_label, leader, strlen(leader) - 1);
+                clean_label[strlen(leader) - 1] = '\0';
+                if (table_insert(symbol_table, clean_label, IC))
+                    PRINT_LABEL_INSERT(clean_label, IC);
+                else
+                    printf("[Insert Error] Failed to insert label\n");
             }
-            else
-            {
-                printf("ERROR: Label '%s' already declared.\n", leader);
-            }
-
-            leader = leader = tokenized_line.tokens[1];
-            printf("leader is now changed to: %s\n", leader);
+            else PRINT_LABEL_EXISTS(leader);
+            leader = tokenized_line.tokens[1];
+            PRINT_TOKEN(leader);
         }
 
         if (is_instruction_line(leader))
         {
-            printf("Instruction detected.\n");
+            Opcode opcode = get_code(leader);
+            PRINT_INSTRUCTION(opcode);
             parse_instruction_line(line_number, DC, tokenized_line);
         }
         else if (is_directive_line(leader))
         {
-            printf("Directive detected.\n");
+            PRINT_DIRECTIVE(leader);
             parse_directive_line(DC, tokenized_line);
         }
 
         line_number++;
     }
-
     fclose(file);
 }
 
-/*====================================================*/
-/*               Instruction & Directive              */
-/*====================================================*/
-
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
 {
-    printf("Parsing instruction line #%d\n", line_num);
-    InstructionInfo *info;
-    info = malloc(sizeof(InstructionInfo));
+    InstructionInfo *info = malloc(sizeof(InstructionInfo));
     Opcode opcode = get_code(tokenized_line.tokens[0]);
     int expected_num_op = expect_operands(opcode);
     info->opcode = opcode;
 
-    printf("Opcode: %d, Expected operands: %d\n", opcode, expected_num_op);
+    printf("--> Expected operands: %d\n", expected_num_op);
 
     switch (expected_num_op)
     {
     case 1:
-        printf("Parsing one operand (dest)...\n");
+        PRINT_OPERAND(1, tokenized_line.tokens[1]);
         parse_operand(&(info->dest_op), tokenized_line, 1);
         break;
     case 2:
-        printf("Parsing two operands (src, dest)...\n");
+        PRINT_OPERAND(1, tokenized_line.tokens[1]);
+        PRINT_OPERAND(2, tokenized_line.tokens[2]);
         parse_operand(&(info->src_op), tokenized_line, 1);
         parse_operand(&(info->dest_op), tokenized_line, 2);
         break;
     default:
-        printf("Zero operands or unknown.\n");
+        printf("--> No operands expected.\n");
         break;
     }
 
