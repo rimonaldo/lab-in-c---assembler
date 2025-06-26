@@ -39,7 +39,7 @@ start:
 
     ; These instructions should be skipped by jump
     sub r5, r6
-    mov r7, r8
+    mov r7, r5
 
 END:
     stop
