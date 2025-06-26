@@ -7,34 +7,49 @@
 #include "../common/tokenizer/tokenizer.h"
 
 #ifdef DEBUG
-#define PRINT_DEBUG(fmt, ...)                                 \
-    do                                                        \
-    {                                                         \
-        fprintf(stderr, "[DEBUG] %s:%d:%s(): " fmt "\n",      \
-                __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+#define PRINT_DEBUG(fmt, ...)                                                           \
+    do                                                                                  \
+    {                                                                                   \
+        fprintf(stderr, "\033[1;90m[DEBUG]\033[0m %s:%d \033[3m%s()\033[0m: " fmt "\n", \
+                __FILE__, __LINE__, __func__, ##__VA_ARGS__);                           \
     } while (0)
 #else
-#define PRINT_DEBUG(fmt, ...) do {} while (0)
+#define PRINT_DEBUG(fmt, ...) \
+    do                        \
+    {                         \
+    } while (0)
 #endif
 
-#define PRINT_LINE(n)           printf("\n\033[1;36m[Line %d]\033[0m\n", n)
-#define PRINT_RAW_LINE(s)      printf("Raw:     %s", s)
-#define PRINT_TOKEN(t)         printf("Token:   %s\n", t)
-#define PRINT_LABEL_FOUND(l)   printf("\033[1;33mLabel Found:\033[0m %s\n", l)
-#define PRINT_LABEL_INSERT(l,a) printf("Inserted Label: '%s' @ %d\n", l, a)
-#define PRINT_LABEL_EXISTS(l)  printf("\033[1;31mLabel Error:\033[0m '%s' already exists\n", l)
-#define PRINT_INSTRUCTION(o)   printf("Instruction Detected: opcode = %d\n", o)
-#define PRINT_DIRECTIVE(s)     printf("Directive Detected: %s\n", s)
-#define PRINT_OPERAND(n,tok)   printf("Operand %d: %s\n", n, tok)
-#define PRINT_ADDR_MODE(s)     printf("Addressing Mode: %s\n", s)
+/* --- Parsing Output Helpers --- */
+
+#define PRINT_LINE(n) printf("\n\033[1;36m╔════════════════════════════╗\n" \
+                             "║         [ Line %3d ]       ║\n"             \
+                             "╚════════════════════════════╝\033[0m\n",     \
+                             n)
+
+#define PRINT_RAW_LINE(s) printf("  \033[0;37mRaw Line     :\033[0m %s\n", s)
+#define PRINT_TOKEN(t) printf("  \033[0;32mToken        :\033[0m %s\n", t)
+#define PRINT_LABEL_FOUND(l) printf("  \033[1;33mLabel Found  :\033[0m %s\n", l)
+#define PRINT_LABEL_INSERT(l, a) printf("  \033[0;36mLabel Insert :\033[0m '%s' @ %d\n", l, a)
+#define PRINT_LABEL_EXISTS(l) printf("  \033[1;31mLabel Error  :\033[0m '%s' already exists\n", l)
+#define PRINT_INSTRUCTION(o) printf("  \033[1;35mInstruction  :\033[0m opcode = %d\n", o)
+#define PRINT_DIRECTIVE(s) printf("  \033[1;34mDirective    :\033[0m %s\n", s)
+#define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
+#define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 
 char *trim_whitespace(char *str)
 {
     static char trimmed[1024];
     int i = 0, j = 0;
-    if (!str) { trimmed[0] = '\0'; return trimmed; }
-    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n') i++;
-    for (; str[i] != '\0'; i++) {
+    if (!str)
+    {
+        trimmed[0] = '\0';
+        return trimmed;
+    }
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
+        i++;
+    for (; str[i] != '\0'; i++)
+    {
         if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
             trimmed[j++] = str[i];
     }
@@ -52,17 +67,27 @@ void run_first_pass(char *filename)
     Tokens tokenized_line;
     char *leader;
 
-    if (!file) { perror("Error opening file"); return; }
+    if (!file)
+    {
+        perror("Error opening file");
+        return;
+    }
     printf("\n\033[1;35mFILENAME:\033[0m %s\n", filename);
 
     while (fgets(line, sizeof(line), file))
     {
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
-
+        
         tokenized_line = tokenize_line(line);
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
+
+        if (is_comment_line(leader) || is_empty_line(tokenized_line))
+        {
+            line_number++;
+            continue;
+        }
 
         if (is_label_declare(leader))
         {
@@ -77,7 +102,8 @@ void run_first_pass(char *filename)
                 else
                     printf("[Insert Error] Failed to insert label\n");
             }
-            else PRINT_LABEL_EXISTS(leader);
+            else
+                PRINT_LABEL_EXISTS(leader);
             leader = tokenized_line.tokens[1];
             PRINT_TOKEN(leader);
         }
@@ -280,6 +306,7 @@ int is_valid_mat_access(char *value)
 
 int is_valid_register(char *value)
 {
+    /* TODO: hande unvalid register */
     return value[0] == 'r' &&
            value[1] >= '0' && value[1] <= '7' &&
            value[2] == '\0';
@@ -457,4 +484,23 @@ int expect_operands(Opcode opcode)
     default:
         return -1;
     }
+}
+
+int is_comment_line(char *line)
+{
+    const char *trimmed;
+    if (!line)
+        return 0;
+    trimmed = trim_whitespace(line);
+    return trimmed[0] == ';';
+}
+
+int is_empty_line(Tokens tokens)
+{
+    const char *trimmed;
+    if (tokens.count == 0)
+        return 1;
+
+    trimmed = trim_whitespace(tokens.tokens[0]);
+    return trimmed[0] == '\0';
 }

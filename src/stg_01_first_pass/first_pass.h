@@ -17,6 +17,8 @@ int is_valid_number_operand(char *value);
 int is_valid_mat_access(char *value);
 int is_valid_register(char *value);
 int is_valid_label_name(char *token);
+int is_comment_line(char *token);
+int is_empty_line(Tokens tokens);
 
 const char *addressing_mode_name(AddressingMode mode);
 #endif
