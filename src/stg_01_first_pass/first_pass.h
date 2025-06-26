@@ -12,4 +12,11 @@ int is_directive_line(char *leader);
 AddressingMode get_mode(Tokens tokenized_line, int token_idx);
 Opcode get_code(char *str);
 
+/* HELPER FUNCTIONS */
+int is_valid_number_operand(char *value);
+int is_valid_mat_access(char *value);
+int is_valid_register(char *value);
+int is_valid_label_name(char *token);
+
+const char *addressing_mode_name(AddressingMode mode);
 #endif

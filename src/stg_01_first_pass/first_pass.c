@@ -6,6 +6,46 @@
 #include "../common/table/table.h"
 #include "../common/tokenizer/tokenizer.h"
 
+#ifdef DEBUG
+#define PRINT_DEBUG(fmt, ...)                                 \
+    do                                                        \
+    {                                                         \
+        fprintf(stderr, "[DEBUG] %s:%d:%s(): " fmt "\n",      \
+                __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    } while (0)
+#else
+#define PRINT_DEBUG(fmt, ...) \
+    do                        \
+    {                         \
+    } while (0)
+#endif
+
+char *trim_whitespace(char *str)
+{
+    static char trimmed[1024];
+    int i = 0, j = 0;
+
+    if (!str)
+    {
+        trimmed[0] = '\0';
+        return trimmed;
+    }
+
+    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
+        i++;
+
+    for (; str[i] != '\0'; i++)
+    {
+        if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
+        {
+            trimmed[j++] = str[i];
+        }
+    }
+
+    trimmed[j] = '\0';
+    return trimmed;
+}
+
 /*====================================================*/
 /*                  First Pass Driver                 */
 /*====================================================*/
@@ -80,12 +120,13 @@ void run_first_pass(char *filename)
 
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
 {
-    InstructionInfo *info ;
+    printf("Parsing instruction line #%d\n", line_num);
+    InstructionInfo *info;
+    info = malloc(sizeof(InstructionInfo));
     Opcode opcode = get_code(tokenized_line.tokens[0]);
     int expected_num_op = expect_operands(opcode);
     info->opcode = opcode;
 
-    printf("Parsing instruction line #%d\n", line_num);
     printf("Opcode: %d, Expected operands: %d\n", opcode, expected_num_op);
 
     switch (expected_num_op)
@@ -132,7 +173,8 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
 
     operand_to_parse->mode = get_mode(tokenized_line, token_idx);
-    printf("Detected addressing mode: %d\n", operand_to_parse->mode);
+    char *mode_str = addressing_mode_name(operand_to_parse->mode);
+    printf("Detected addressing mode: %s\n", mode_str);
 
     switch (operand_to_parse->mode)
     {
@@ -164,9 +206,120 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
 AddressingMode get_mode(Tokens tokenized_line, int token_idx)
 {
     char *value = tokenized_line.tokens[token_idx];
-    if (is_label(value))
+
+    if (is_valid_mat_access(value))
+        return MAT_ACCESS;
+    else if (is_valid_number_operand(value))
+        return IMMEDIATE;
+    else if (is_valid_register(value))
+        return REGISTER;
+    else if (is_valid_label_name(value))
         return DIRECT;
-    return DIRECT;
+    else
+    {
+        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
+        return DIRECT;
+    }
+}
+
+int is_valid_number_operand(char *value)
+{
+    return value[0] == '#';
+}
+
+int is_valid_mat_access(char *value)
+{
+    /* trimmed copy of value */
+    char *trimmed_value = trim_whitespace(value);
+    char temp[MAX_TOKEN_LEN];
+    char temp_reg1[3];
+    char temp_reg2[3];
+    int i = 0;
+
+    /* copy name, stop at opening '[' */
+    while (trimmed_value[i] != '[')
+    {
+        if (value[i] == '\0')
+        {
+            return 0;
+            /* handle error */
+        }
+        temp[i] = trimmed_value[i];
+        i++;
+    }
+
+    /* check if valid label name */
+    temp[i] = '\0';
+    if (!is_valid_label_name(temp))
+    {
+        return 0;
+        /* handle error */
+    }
+
+    /* check valid register */
+    temp_reg1[0] = trimmed_value[i + 1];
+    temp_reg1[1] = trimmed_value[i + 2];
+    temp_reg1[2] = '\0';
+    if (!is_valid_register(temp_reg1))
+    {
+        return 0;
+        /* handle error */
+    }
+    /* check for closing ']' */
+    if (trimmed_value[i + 3] != ']')
+    {
+        return 0;
+        /* handle error */
+    }
+    /* check opening '[' */
+    if (trimmed_value[i + 4] != '[')
+    {
+        return 0;
+        /* handle error */
+    }
+
+    /* check valid register */
+    temp_reg2[0] = trimmed_value[i + 5];
+    temp_reg2[1] = trimmed_value[i + 6];
+    temp_reg2[2] = '\0';
+    if (!is_valid_register(temp_reg2))
+    {
+        return 0;
+        /* handle error */
+    }
+
+    /* check for closing ']' */
+    if (trimmed_value[i + 7] != ']')
+    {
+        return 0;
+        /* handle error */
+    }
+
+    return 1;
+}
+
+int is_valid_register(char *value)
+{
+    return value[0] == 'r' &&
+           value[1] >= '0' && value[1] <= '7' &&
+           value[2] == '\0';
+}
+
+const char *addressing_mode_name(AddressingMode mode)
+{
+    switch (mode)
+    {
+    case IMMEDIATE:
+        return "IMMEDIATE (number)";
+    case DIRECT:
+        return "DIRECT (label)";
+    case REGISTER:
+        return "REGISTER";
+    case MAT_ACCESS:
+        return "MAT_ACCESS";
+    default:
+        return "UNKNOWN";
+    }
 }
 
 /*====================================================*/
@@ -176,16 +329,17 @@ AddressingMode get_mode(Tokens tokenized_line, int token_idx)
 int is_label_declare(char *token)
 {
     int len = strlen(token);
-    return (is_label(token) && token[len - 1] == ':');
+    return (is_valid_label_name(token) && token[len - 1] == ':');
 }
 
-int is_label(char *token)
+int is_valid_label_name(char *token)
 {
     int i;
     int len;
 
     if (!token)
     {
+        /* handle error*/
         return false;
     }
 
@@ -194,11 +348,14 @@ int is_label(char *token)
     if (len == 0 || len > 31)
     {
         return false;
+        /* handle error*/
     }
 
-    if (!((token[0] >= 'A' && token[0] <= 'Z') || (token[0] >= 'a' && token[0] <= 'z')))
+    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
+          (token[0] >= 'a' && token[0] <= 'z')))
     {
         return false;
+        /* handle error */
     }
 
     for (i = 1; i < len - 1; i++)
@@ -208,6 +365,7 @@ int is_label(char *token)
               (token[i] >= '0' && token[i] <= '9')))
         {
             return false;
+            /*handle error */
         }
     }
 
@@ -216,12 +374,14 @@ int is_label(char *token)
 
 int is_instruction_line(char *leader)
 {
-    Opcode opcode = get_code(leader);        /* get_code אמור להחזיר -1 אם לא חוקי */
+    Opcode opcode = get_code(leader);     /* get_code אמור להחזיר -1 אם לא חוקי */
     return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
 }
 
 Opcode get_code(char *str)
 {
+
+    PRINT_DEBUG("getting opcode\n");
     int res;
     if (strcmp(str, "mov") == 0)
         return 0;
