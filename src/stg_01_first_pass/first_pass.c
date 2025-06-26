@@ -23,11 +23,11 @@
 /* --- Parsing Output Helpers --- */
 
 #define PRINT_LINE(n) printf("\n\033[1;36m╔════════════════════════════╗\n" \
-                             "║         [ Line %3d ]       ║\n"             \
+                             "║        [ Line %3d ]        ║\n"             \
                              "╚════════════════════════════╝\033[0m\n",     \
                              n)
 
-#define PRINT_RAW_LINE(s) printf("  \033[0;37mRaw Line     :\033[0m %s\n", s)
+#define PRINT_RAW_LINE(s) printf("  \033[0;37mRaw Line     :\033[0m %s", s)
 #define PRINT_TOKEN(t) printf("  \033[0;32mToken        :\033[0m %s\n", t)
 #define PRINT_LABEL_FOUND(l) printf("  \033[1;33mLabel Found  :\033[0m %s\n", l)
 #define PRINT_LABEL_INSERT(l, a) printf("  \033[0;36mLabel Insert :\033[0m '%s' @ %d\n", l, a)
@@ -78,7 +78,7 @@ void run_first_pass(char *filename)
     {
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
-        
+
         tokenized_line = tokenize_line(line);
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);

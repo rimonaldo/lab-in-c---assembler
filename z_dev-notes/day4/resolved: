@@ -1,0 +1,10 @@
+- issues
+    - Token:   �E���
+    - line is read multiple times, expample below
+    not resolved yet:
+    - macro expansion broken, expands only first macro line
+    - parsing operand with direct adressing mode 
+
+- logic
+    not resolved yet:
+    - figure out how to deal with .extern and .entry directives
