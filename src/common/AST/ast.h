@@ -9,7 +9,7 @@ typedef enum
 {
     IMMEDIATE,
     DIRECT,
-    INDEX,
+    MAT_ACCESS,
     REGISTER
 } AddressingMode;
 
