@@ -1,9 +1,9 @@
 ; Macro definitions
 
 mcro INIT_REGS
-    mov r0, #0
-    mov r1, #0
-    mov r2, #0
+    mov r0, #1
+    mov r1, #2
+    mov r2, #3
 mcroend
 
 mcro CLEAR_FLAGS
