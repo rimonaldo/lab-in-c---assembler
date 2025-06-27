@@ -37,6 +37,31 @@
 #define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 
+/**
+ * A custom implementation of strdup for debugging purposes.
+ * It allocates memory with malloc and copies the string content.
+ */
+char *my_strdup(const char *s)
+{
+    if (s == NULL)
+    {
+        fprintf(stderr, "DEBUG: my_strdup received a NULL pointer.\n");
+        return NULL;
+    }
+
+    size_t len = strlen(s) + 1;
+    char *new_s = malloc(len);
+
+    if (new_s == NULL)
+    {
+        fprintf(stderr, "DEBUG: malloc inside my_strdup returned NULL! Heap exhaustion or corruption is likely.\n");
+        return NULL;
+    }
+
+    memcpy(new_s, s, len);
+    return new_s;
+}
+
 char *trim_whitespace(char *str)
 {
     static char trimmed[1024];
@@ -66,7 +91,8 @@ void run_first_pass(char *filename)
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
-
+    ASTNode *head = NULL;
+    ASTNode *tail = NULL;
     if (!file)
     {
         perror("Error opening file");
@@ -92,27 +118,42 @@ void run_first_pass(char *filename)
         if (is_label_declare(leader))
         {
             PRINT_LABEL_FOUND(leader);
+            /*
             if (!table_lookup(symbol_table, leader))
             {
-                char clean_label[strlen(leader)];
-                strncpy(clean_label, leader, strlen(leader) - 1);
-                clean_label[strlen(leader) - 1] = '\0';
-                if (table_insert(symbol_table, clean_label, IC))
-                    PRINT_LABEL_INSERT(clean_label, IC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
-            }
-            else
-                PRINT_LABEL_EXISTS(leader);
-            leader = tokenized_line.tokens[1];
-            PRINT_TOKEN(leader);
+                 char clean_label[strlen(leader)];
+                 strncpy(clean_label, leader, strlen(leader) - 1);
+                 clean_label[strlen(leader) - 1] = '\0';
+                 if (table_insert(symbol_table, clean_label, IC))
+                 PRINT_LABEL_INSERT(clean_label, IC);
+                 else
+                 printf("[Insert Error] Failed to insert label\n");
+             }
+             else
+             PRINT_LABEL_EXISTS(leader);
+             leader = tokenized_line.tokens[1];
+             PRINT_TOKEN(leader);
+             */
         }
 
         if (is_instruction_line(leader))
         {
             Opcode opcode = get_code(leader);
+            ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
-            parse_instruction_line(line_number, DC, tokenized_line);
+            new_node = parse_instruction_line(line_number, DC, tokenized_line);
+            if (new_node)
+            {
+                if (head == NULL)
+                {
+                    head = tail = new_node;
+                }
+                else
+                {
+                    tail->next = new_node;
+                    tail = new_node;
+                }
+            }
         }
         else if (is_directive_line(leader))
         {
@@ -127,10 +168,10 @@ void run_first_pass(char *filename)
 
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
 {
-    InstructionInfo *info = malloc(sizeof(InstructionInfo));
+    InstructionInfo info;
     Opcode opcode = get_code(tokenized_line.tokens[0]);
     int expected_num_op = expect_operands(opcode);
-    info->opcode = opcode;
+    info.opcode = opcode;
 
     printf("--> Expected operands: %d\n", expected_num_op);
 
@@ -138,20 +179,20 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
     {
     case 1:
         PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        parse_operand(&(info->dest_op), tokenized_line, 1);
+        parse_operand(&(info.dest_op), tokenized_line, 1);
         break;
     case 2:
         PRINT_OPERAND(1, tokenized_line.tokens[1]);
         PRINT_OPERAND(2, tokenized_line.tokens[2]);
-        parse_operand(&(info->src_op), tokenized_line, 1);
-        parse_operand(&(info->dest_op), tokenized_line, 2);
+        parse_operand(&(info.src_op), tokenized_line, 1);
+        parse_operand(&(info.dest_op), tokenized_line, 2);
         break;
     default:
         printf("--> No operands expected.\n");
         break;
     }
 
-    return create_instruction_node(line_num, NULL, *info);
+    return create_instruction_node(line_num, NULL, info);
 }
 
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
@@ -176,11 +217,11 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
 
 void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
+
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
 
     operand_to_parse->mode = get_mode(tokenized_line, token_idx);
-    char *mode_str = addressing_mode_name(operand_to_parse->mode);
-    printf("Detected addressing mode: %s\n", mode_str);
+    printf("Detected addressing mode: %s\n", addressing_mode_name(operand_to_parse->mode));
 
     switch (operand_to_parse->mode)
     {
@@ -189,9 +230,11 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
         break;
     case DIRECT:
-        operand_to_parse->value.label = strdup(tokenized_line.tokens[token_idx]);
+    {
+        operand_to_parse->value.label = my_strdup(tokenized_line.tokens[token_idx]);
         printf("Direct label: %s\n", operand_to_parse->value.label);
-        break;
+    }
+    break;
     case REGISTER:
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
@@ -243,12 +286,11 @@ int is_valid_mat_access(char *value)
     int i = 0;
 
     /* copy name, stop at opening '[' */
-    while (trimmed_value[i] != '[')
+    while (i < MAX_TOKEN_LEN - 1 && trimmed_value[i] != '[')
     {
-        if (value[i] == '\0')
+        if (trimmed_value[i] == '\0')
         {
             return 0;
-            /* handle error */
         }
         temp[i] = trimmed_value[i];
         i++;
@@ -399,11 +441,11 @@ Opcode get_code(char *str)
     if (strcmp(str, "sub") == 0)
         return 3;
     if (strcmp(str, "lea") == 0)
-        return 6;
-    if (strcmp(str, "clr") == 0)
         return 4;
-    if (strcmp(str, "not") == 0)
+    if (strcmp(str, "clr") == 0)
         return 5;
+    if (strcmp(str, "not") == 0)
+        return 6;
     if (strcmp(str, "inc") == 0)
         return 7;
     if (strcmp(str, "dec") == 0)
