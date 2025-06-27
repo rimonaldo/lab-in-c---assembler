@@ -1,0 +1,6 @@
+- macro expansion broken, expands only first macro line
+    - segfault when parsing operand with direct adressing mode 
+    - (cant assign label - 0x5555e9a0 <error: Cannot access memory at address 0x5555e9a0>)
+
+- logic
+    - figure out how to deal with .extern and .entry directives
