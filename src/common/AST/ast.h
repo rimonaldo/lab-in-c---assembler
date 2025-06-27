@@ -15,13 +15,13 @@ typedef enum
 
 typedef enum
 {
-    MOV,
+    MOV = 0,
     CMP,
     ADD,
     SUB,
-    NOT,
-    CLR,
     LEA,
+    CLR,
+    NOT,
     INC,
     DEC,
     JMP,
@@ -31,6 +31,7 @@ typedef enum
     JSR,
     RTS,
     STOP = 15
+    
 } Opcode;
 
 typedef enum
