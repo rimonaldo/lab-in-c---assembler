@@ -118,22 +118,20 @@ void run_first_pass(char *filename)
         if (is_label_declare(leader))
         {
             PRINT_LABEL_FOUND(leader);
-            /*
             if (!table_lookup(symbol_table, leader))
             {
-                 char clean_label[strlen(leader)];
-                 strncpy(clean_label, leader, strlen(leader) - 1);
-                 clean_label[strlen(leader) - 1] = '\0';
-                 if (table_insert(symbol_table, clean_label, IC))
-                 PRINT_LABEL_INSERT(clean_label, IC);
-                 else
-                 printf("[Insert Error] Failed to insert label\n");
-             }
-             else
-             PRINT_LABEL_EXISTS(leader);
-             leader = tokenized_line.tokens[1];
-             PRINT_TOKEN(leader);
-             */
+                char clean_label[strlen(leader)];
+                strncpy(clean_label, leader, strlen(leader) - 1);
+                clean_label[strlen(leader) - 1] = '\0';
+                if (table_insert(symbol_table, clean_label, IC))
+                    PRINT_LABEL_INSERT(clean_label, IC);
+                else
+                    printf("[Insert Error] Failed to insert label\n");
+            }
+            else
+                PRINT_LABEL_EXISTS(leader);
+            leader = tokenized_line.tokens[1];
+            PRINT_TOKEN(leader);
         }
 
         if (is_instruction_line(leader))
@@ -160,7 +158,7 @@ void run_first_pass(char *filename)
             PRINT_DIRECTIVE(leader);
             parse_directive_line(DC, tokenized_line);
         }
-
+        IC++;
         line_number++;
     }
     fclose(file);
