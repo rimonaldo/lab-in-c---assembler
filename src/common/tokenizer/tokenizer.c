@@ -33,7 +33,7 @@ Tokens tokenize_line(const char *line)
             break;
 
         /* Handle special single-char tokens as standalone */
-        if (strchr("[]:()", line[i]))
+        if (strchr("[]()", line[i]))
         {
             result.tokens[result.count][0] = line[i];
             result.tokens[result.count][1] = '\0';
@@ -48,7 +48,7 @@ Tokens tokenize_line(const char *line)
             !isspace(line[i]) &&
             line[i] != ',' &&
             line[i] != ';' &&
-            !strchr("[]:()", line[i]) &&
+            !strchr("[]()", line[i]) &&
             j < MAX_TOKEN_LEN - 1)
         {
             result.tokens[result.count][j++] = line[i++];
