@@ -1,0 +1,134 @@
+Direct leak of 616 byte(s) in 7 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511b470 in create_directive_node src/common/AST/ast.c:77
+    #2 0x5648c5116e67 in parse_directive_line src/stg_01_first_pass/first_pass.c:209
+    #3 0x5648c5116739 in run_first_pass src/stg_01_first_pass/first_pass.c:159
+    #4 0x5648c51158fe in main src/main.c:42
+    #5 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+
+This is ASTNode created in ast module and returned from parse_directive_line() to run_first_pass()
+
+----------------------------------------------------------------------------------------------------------------------------
+Direct leak of 168 byte(s) in 7 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c5116d0f in parse_directive_line src/stg_01_first_pass/first_pass.c:199
+    #2 0x5648c5116739 in run_first_pass src/stg_01_first_pass/first_pass.c:159
+    #3 0x5648c51158fe in main src/main.c:42
+    #4 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
+
+    DirectiveInfo *info;
+    info = malloc(sizeof(DirectiveInfo));
+
+----------------------------------------------------------------------------------------------------------------------------
+Direct leak of 88 byte(s) in 1 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511b206 in create_instruction_node src/common/AST/ast.c:29
+    #2 0x5648c5116c60 in parse_instruction_line src/stg_01_first_pass/first_pass.c:193
+    #3 0x5648c51165c3 in run_first_pass src/stg_01_first_pass/first_pass.c:142
+    #4 0x5648c51158fe in main src/main.c:42
+    #5 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+This is ASTNode created in ast module and returned from parse_instruction_line() to run_first_pass() 
+** only 1 object unlike from parse_directive_line, maybe because we store the object returned there in a linked node list
+
+----------------------------------------------------------------------------------------------------------------------------
+Direct leak of 42 byte(s) in 7 object(s) allocated from:
+    #0 0x7fdd73d263ed in __interceptor_strdup ../../../../src/libsanitizer/asan/asan_interceptors.cc:445
+    #1 0x5648c511b54a in create_directive_node src/common/AST/ast.c:90
+    #2 0x5648c5116e67 in parse_directive_line src/stg_01_first_pass/first_pass.c:209
+    #3 0x5648c5116739 in run_first_pass src/stg_01_first_pass/first_pass.c:159
+    #4 0x5648c51158fe in main src/main.c:42
+    #5 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+again mfkin strdup => node->label = strdup(label); 
+in ast.c create_directive_node
+
+----------------------------------------------------------------------------------------------------------------------------
+Direct leak of 8 byte(s) in 1 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511ba43 in table_create src/common/table/table.c:37
+    #2 0x5648c5115fc3 in run_first_pass src/stg_01_first_pass/first_pass.c:88
+    #3 0x5648c51158fe in main src/main.c:42
+    #4 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+Table* table = (Table*)malloc(sizeof(Table)); 
+in table_create
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 616 byte(s) in 7 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511b206 in create_instruction_node src/common/AST/ast.c:29
+    #2 0x5648c5116c60 in parse_instruction_line src/stg_01_first_pass/first_pass.c:193
+    #3 0x5648c51165c3 in run_first_pass src/stg_01_first_pass/first_pass.c:142
+    #4 0x5648c51158fe in main src/main.c:42
+    #5 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+nvm what i said before about saving nodes in list, we have here 616 bytes leaking from
+returned ASTNode obj 
+new_node = parse_instruction_line(line_number, DC, tokenized_line); 
+(what makes it indirect?)
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 144 byte(s) in 6 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511bc50 in table_insert src/common/table/table.c:97
+    #2 0x5648c5116428 in run_first_pass src/stg_01_first_pass/first_pass.c:126
+    #3 0x5648c51158fe in main src/main.c:42
+    #4 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+/* Allocate memory for the new node */
+    new_node = (TableNode*)malloc(sizeof(TableNode));
+from table insertion (what makes it indirect?)
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 28 byte(s) in 6 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c511bc89 in table_insert src/common/table/table.c:105
+    #2 0x5648c5116428 in run_first_pass src/stg_01_first_pass/first_pass.c:126
+    #3 0x5648c51158fe in main src/main.c:42
+    #4 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+new_node->key = (char*)malloc(strlen(key) + 1); 
+from table insertion (what makes it indirect?)
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 18 byte(s) in 2 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c5115aaf in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x5648c5117196 in parse_operand src/stg_01_first_pass/first_pass.c:232
+    #3 0x5648c5116a89 in parse_instruction_line src/stg_01_first_pass/first_pass.c:180
+    #4 0x5648c51165c3 in run_first_pass src/stg_01_first_pass/first_pass.c:142
+    #5 0x5648c51158fe in main src/main.c:42
+    #6 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+char *new_s = malloc(len); 
+in my_strdup
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 7 byte(s) in 1 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c5115aaf in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x5648c5117196 in parse_operand src/stg_01_first_pass/first_pass.c:232
+    #3 0x5648c5116b94 in parse_instruction_line src/stg_01_first_pass/first_pass.c:186
+    #4 0x5648c51165c3 in run_first_pass src/stg_01_first_pass/first_pass.c:142
+    #5 0x5648c51158fe in main src/main.c:42
+    #6 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+char *new_s = malloc(len); 
+in my_strdup (again)
+
+----------------------------------------------------------------------------------------------------------------------------
+Indirect leak of 2 byte(s) in 1 object(s) allocated from:
+    #0 0x7fdd73d9d808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5648c5115aaf in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x5648c5117196 in parse_operand src/stg_01_first_pass/first_pass.c:232
+    #3 0x5648c5116b36 in parse_instruction_line src/stg_01_first_pass/first_pass.c:185
+    #4 0x5648c51165c3 in run_first_pass src/stg_01_first_pass/first_pass.c:142
+    #5 0x5648c51158fe in main src/main.c:42
+    #6 0x7fdd73ac2082 in __libc_start_main ../csu/libc-start.c:308
+
+char *new_s = malloc(len); 
+in my_strdup (and again)

@@ -1,0 +1,12 @@
+  Raw Line     :             cmp     #0, r3          ; Compare with 0
+  Token        : cmp
+  Instruction  : opcode = 1
+--> Expected operands: 2
+  Operand 1    : #
+  Operand 2    : 0
+
+- tokenizer bug
+
+
+
+

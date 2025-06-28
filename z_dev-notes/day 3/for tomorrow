@@ -1,0 +1,34 @@
+- issues
+    - Token:   �E���
+    - line is read multiple times, expample below
+    - macro expansion broken, expands only first macro line
+
+- logic
+    - figure out how to deal with .extern and .entry directives
+
+
+
+/* EXAMPLE */
+FILENAME: output/p1.am
+
+[Line 1]
+Raw:     ; --- Macro definitions ---
+Token:   ; --- Macro definitions ---
+
+
+[Line 2]
+Raw:     
+Token:   ; --- Macro definitions ---
+
+
+[Line 3]
+Raw:     
+Token:   ; --- Macro definitions ---
+
+
+[Line 4]
+Raw:     
+Token:   ; --- Macro definitions ---
+
+
+

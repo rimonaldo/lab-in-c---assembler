@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -std=c90 -Wall -Wextra -pedantic -g
-LDFLAGS =
+CFLAGS = -std=c90 -Wall -Wextra -pedantic -g -fsanitize=address
+LDFLAGS = -fsanitize=address
 
 SRC_DIR := src
 BUILD_DIR := build

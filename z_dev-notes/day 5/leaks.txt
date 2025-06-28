@@ -1,0 +1,77 @@
+=================================================================
+==216088==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 176 byte(s) in 2 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x5557262871a1 in create_directive_node src/common/AST/ast.c:77
+    #2 0x555726282b98 in parse_directive_line src/stg_01_first_pass/first_pass.c:211
+    #3 0x555726282483 in run_first_pass src/stg_01_first_pass/first_pass.c:161
+    #4 0x5557262818be in main src/main.c:42
+    #5 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Direct leak of 88 byte(s) in 1 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726286f37 in create_instruction_node src/common/AST/ast.c:29
+    #2 0x555726282991 in parse_instruction_line src/stg_01_first_pass/first_pass.c:195
+    #3 0x55572628230d in run_first_pass src/stg_01_first_pass/first_pass.c:144
+    #4 0x5557262818be in main src/main.c:42
+    #5 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Direct leak of 48 byte(s) in 2 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726282a40 in parse_directive_line src/stg_01_first_pass/first_pass.c:201
+    #2 0x555726282483 in run_first_pass src/stg_01_first_pass/first_pass.c:161
+    #3 0x5557262818be in main src/main.c:42
+    #4 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Direct leak of 12 byte(s) in 2 object(s) allocated from:
+    #0 0x7f45417833ed in __interceptor_strdup ../../../../src/libsanitizer/asan/asan_interceptors.cc:445
+    #1 0x55572628727b in create_directive_node src/common/AST/ast.c:90
+    #2 0x555726282b98 in parse_directive_line src/stg_01_first_pass/first_pass.c:211
+    #3 0x555726282483 in run_first_pass src/stg_01_first_pass/first_pass.c:161
+    #4 0x5557262818be in main src/main.c:42
+    #5 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Direct leak of 8 byte(s) in 1 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726287774 in table_create src/common/table/table.c:37
+    #2 0x555726281f7d in run_first_pass src/stg_01_first_pass/first_pass.c:88
+    #3 0x5557262818be in main src/main.c:42
+    #4 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Indirect leak of 528 byte(s) in 6 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726286f37 in create_instruction_node src/common/AST/ast.c:29
+    #2 0x555726282991 in parse_instruction_line src/stg_01_first_pass/first_pass.c:195
+    #3 0x55572628230d in run_first_pass src/stg_01_first_pass/first_pass.c:144
+    #4 0x5557262818be in main src/main.c:42
+    #5 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Indirect leak of 18 byte(s) in 2 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726281a6f in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x555726282ec7 in parse_operand src/stg_01_first_pass/first_pass.c:234
+    #3 0x5557262827ba in parse_instruction_line src/stg_01_first_pass/first_pass.c:182
+    #4 0x55572628230d in run_first_pass src/stg_01_first_pass/first_pass.c:144
+    #5 0x5557262818be in main src/main.c:42
+    #6 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Indirect leak of 7 byte(s) in 1 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726281a6f in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x555726282ec7 in parse_operand src/stg_01_first_pass/first_pass.c:234
+    #3 0x5557262828c5 in parse_instruction_line src/stg_01_first_pass/first_pass.c:188
+    #4 0x55572628230d in run_first_pass src/stg_01_first_pass/first_pass.c:144
+    #5 0x5557262818be in main src/main.c:42
+    #6 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+Indirect leak of 2 byte(s) in 1 object(s) allocated from:
+    #0 0x7f45417fa808 in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cc:144
+    #1 0x555726281a6f in my_strdup src/stg_01_first_pass/first_pass.c:53
+    #2 0x555726282ec7 in parse_operand src/stg_01_first_pass/first_pass.c:234
+    #3 0x555726282867 in parse_instruction_line src/stg_01_first_pass/first_pass.c:187
+    #4 0x55572628230d in run_first_pass src/stg_01_first_pass/first_pass.c:144
+    #5 0x5557262818be in main src/main.c:42
+    #6 0x7f454151f082 in __libc_start_main ../csu/libc-start.c:308
+
+SUMMARY: AddressSanitizer: 887 byte(s) leaked in 18 allocation(s).

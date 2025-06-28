@@ -1,0 +1,40 @@
+list of commits:
+    - first pass recives correct filename
+    - added commonly shared table module
+    - added ast builder and destroyer functions signatures
+    - algo skeleton first pass logic
+    - minor refactor in ast module
+
+* leader = semantic name for tokenized_line.tokens[0]
+
+first pass logic:
+    init ic,dc
+    declare variables
+    init symbol table
+    open file
+
+    loop every line
+    if leader is label declaration
+        lookup label on symbol table
+        if its not a duplicate
+            write label to symbol table
+            
+            if leader is directive (.value_type) 
+                parse directive node
+                (will use create )
+            else 
+                parse instruction node
+            
+            
+        else, add to error list label declared \ used
+    if leader is directive (.value_type) 
+        parse directive node
+            (will use create )
+    else 
+        parse instruction node
+            
+
+        
+    
+
+    

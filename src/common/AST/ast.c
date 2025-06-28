@@ -154,7 +154,7 @@ void free_operand(Operand *op)
     {
         free(op->value.label);
     }
-    else if (op->mode == INDEX && op->value.index.label != NULL)
+    else if (op->mode == MAT_ACCESS && op->value.index.label != NULL)
     {
         free(op->value.index.label);
     }

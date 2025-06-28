@@ -9,19 +9,19 @@ typedef enum
 {
     IMMEDIATE,
     DIRECT,
-    INDEX,
+    MAT_ACCESS,
     REGISTER
 } AddressingMode;
 
 typedef enum
 {
-    MOV,
+    MOV = 0,
     CMP,
     ADD,
     SUB,
-    NOT,
-    CLR,
     LEA,
+    CLR,
+    NOT,
     INC,
     DEC,
     JMP,
@@ -31,12 +31,14 @@ typedef enum
     JSR,
     RTS,
     STOP = 15
+    
 } Opcode;
 
 typedef enum
 {
     DATA,
     STRING,
+    MAT,
     ENTRY,
     EXTERN
 } DirectiveType;
@@ -67,6 +69,18 @@ typedef struct Operand
     AddressingMode mode;
 } Operand;
 
+/**
+ * @brief Structure representing information about an assembly instruction.
+ *
+ * This structure holds the opcode, number of operands, and the source and
+ * destination operands for a single instruction in the abstract syntax tree (AST).
+ *
+ * @typedef InstructionInfo
+ * @param opcode      The operation code specifying the instruction type.
+ * @param num_operands The number of operands used by the instruction.
+ * @param src_op      The source operand for the instruction.
+ * @param dest_op     The destination operand for the instruction.
+ */
 typedef struct InstructionInfo
 {
     Opcode opcode;
@@ -108,8 +122,24 @@ typedef struct ASTNode
   Function Prototypes
 ===============================*/
 
+/* AST node builders*/
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
+
+/* Operand builders */
+Operand *create_immediate_operand(int value);
+Operand *create_direct_operand(const char *label);
+Operand *create_register_operand(int reg_num);
+Operand *create_index_operand(const char *label, int reg_num);
+
+/* statement builders */
+InstructionInfo *create_instruction_info();
+DirectiveInfo *create_directive_info();
+
+/* destroy structs */
 void free_ast(ASTNode *head);
+void free_operand(Operand *op);
+void free_instruction_contents(InstructionInfo *inst);
+void free_directive_contents(DirectiveInfo *dir);
 
 #endif /* AST_H */
