@@ -43,23 +43,19 @@
  */
 char *my_strdup(const char *s)
 {
-    if (s == NULL)
+    /* הקצאת זיכרון עבור המחרוזת החדשה + מקום לתו מסיים ('\0') */
+    char *new_str = malloc(strlen(s) + 1);
+
+    /* בדיקה שההקצאה הצליחה */
+    if (new_str == NULL)
     {
-        fprintf(stderr, "DEBUG: my_strdup received a NULL pointer.\n");
         return NULL;
     }
 
-    size_t len = strlen(s) + 1;
-    char *new_s = malloc(len);
+    /* העתקת תוכן המחרוזת המקורית למחרוזת החדשה */
+    strcpy(new_str, s);
 
-    if (new_s == NULL)
-    {
-        fprintf(stderr, "DEBUG: malloc inside my_strdup returned NULL! Heap exhaustion or corruption is likely.\n");
-        return NULL;
-    }
-
-    memcpy(new_s, s, len);
-    return new_s;
+    return new_str;
 }
 
 char *trim_whitespace(char *str)
@@ -152,15 +148,30 @@ void run_first_pass(char *filename)
                     tail = new_node;
                 }
             }
+            /* increment instruction counter */
+            IC++;
         }
         else if (is_directive_line(leader))
         {
             PRINT_DIRECTIVE(leader);
-            parse_directive_line(DC, tokenized_line);
+            ASTNode *new_node;
+            new_node = parse_directive_line(DC, tokenized_line);
+            if (head == NULL)
+            {
+                head = tail = new_node;
+            }
+            else
+            {
+                tail->next = new_node;
+                tail = new_node;
+            }
+            /* increment data counter */
+            /* temporary, TODO token validation for each data token */
+            DC += tokenized_line.count - 1;
         }
-        IC++;
         line_number++;
     }
+    free_ast(head);
     fclose(file);
 }
 
@@ -238,7 +249,7 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
     case MAT:
-        operand_to_parse->value.index.label = strdup(tokenized_line.tokens[token_idx]);
+        operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
         operand_to_parse->value.index.reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
         printf("Matrix label: %s, Register index: %d\n",
                operand_to_parse->value.index.label,
