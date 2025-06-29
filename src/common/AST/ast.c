@@ -12,7 +12,6 @@
 
 #include <stdio.h>  /* For error printing (fprintf) */
 #include <stdlib.h> /* For dynamic memory allocation (malloc, free) */
-#include <string.h> /* For string duplication (strdup) */
 #include "ast.h"
 
 /**
@@ -38,11 +37,11 @@ ASTNode *create_instruction_node(int line_num, const char *label, InstructionInf
     node->line_number = line_num;
     node->next = NULL;
 
-    /* Safely duplicate the label string. strdup allocates new memory and copies the string. */
+    /* Safely duplicate the label string. my_strdup allocates new memory and copies the string. */
     /* This is important to avoid dependency on the original string and prevent memory issues. */
     if (label != NULL)
     {
-        node->label = strdup(label);
+        node->label = (char *)malloc(strlen(label) + 1);
         if (node->label == NULL)
         {
             /* Handle memory allocation error for the label */
@@ -87,7 +86,7 @@ ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo di
     node->next = NULL;
     if (label != NULL)
     {
-        node->label = strdup(label);
+        node->label = (char *)malloc(strlen(label) + 1);
         if (node->label == NULL)
         {
             free(node);
@@ -130,16 +129,19 @@ void free_ast(ASTNode *head)
 
         if (current->type == INSTRUCTION_STATEMENT)
         {
-            free_instruction_contents(current);
+            /*
+            free_instruction_contents(&(current->content.instruction));
+            */
         }
         else if (current->type == DIRECTIVE_STATEMENT)
         {
-            free_directive_contents(current);
+            /*
+            free_directive_contents(&(current->content.directive));
+            */
         }
 
         /* 2. Free the node itself */
         free(current);
-
         /* 3. Move to the next node */
         current = next_node;
     }
