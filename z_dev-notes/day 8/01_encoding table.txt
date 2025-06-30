@@ -1,0 +1,78 @@
+encoding table:
+label  |  decimal address  |  base4 address  |   inst   |  ops  |  bin code
+            start 100
+
+use ast to build this?
+
+----------- instructions encoding ----------- 
+
+0,1 => A(absolute),E(external),R(relocatable) => A=00, E=01, R=10
+** only for encoded instructions, and their added words **
+** not for directives and data **
+
+2,3 => addressing mode of src op
+
+4,5 => addressing mode of dest op
+
+6,7,8,9 => opcode (0-15) => [0000 , 1111]
+
+----------- operands encoding ----------- 
+
+immediate => #int
+            8 bits for the value itself 
+            0,1 is AER
+
+direct => adress of label
+            8 bits for the value itself
+            0,1 is AER
+
+mat access => label + 2 registers = 2 added words
+            1. the adress of mat label
+            2. the indecies: 6-9 row reg, 2-5 col reg , 
+            0,1 is AER
+
+register => if reg is -only- src op     -> 2-5 reg num
+            if reg is -only- dest op    -> 6,9 reg num
+            if reg is -both- src & dest -> 2-5 src reg, 6-9 dest reg
+            0,1 is AER
+
+-------------------------------- tasks --------------------------------
+
+Task 1: Define and Link Encoding Table 🗂️
+    - Create a table structure to hold label, address, base-4 address, instruction, operands, and binary code.
+    - Connect this table to your main program structure (AST).
+
+Task 2: Encode Instructions 💻
+    - Write code to build the 10-bit instruction word.
+    - Include A/E/R bits, src and dest addressing modes, and opcode.
+
+Task 3: Encode Operands ⚙️
+    - Handle different operand types: immediate, direct, matrix (needs 2 extra words), and register.
+    - Add extra words when needed and set A/E/R bits properly.
+
+Task 4: Convert Addresses to Base 4 🔢
+    - Make a function to convert decimal addresses to base-4 strings.
+    - Use this in the encoding table for display or output.
+
+Task 5: Update Symbol Table After First Pass 📝
+    - After reading all instructions, add the final instruction count (ICF) to data symbol addresses.
+    - Make sure symbol addresses are correct for final output.
+    
+    
+    
+    
+    
+✅ Tasks — Encoding Table Integration
+- Define Encoding Table Structure
+- Design a structure to hold label, address, base-4, instruction, operands, and binary encoding.
+- Connect Table to AST
+- Attach the encoding table to your main AST or program structure.
+- Instruction Encoding Logic
+- Encode A/E/R, addressing modes, and opcode into a 10-bit word.
+- Operand Encoding Rules
+- Immediate and direct: 1 extra word.
+- Matrix access: 2 extra words.
+- Register: 1 word unless both src/dest are registers (combined).
+- Track and Store Binary Code
+- For each instruction, generate and store the binary encoding in the table.
+

@@ -1,0 +1,66 @@
+→ **Directives:**
+
+A directive statement is a statement that instructs the **assembler**
+what to do **during the assembly process**, not during program execution.
+
+A directive can tell the assembler to:
+- allocate memory,
+- initialize or store data,
+- declare symbols or labels,
+- or mark external or entry points.
+
+Unlike instructions, **directives do not produce machine code**
+and are not executed at runtime.  
+Instead, they help organize the program and guide the assembler 
+in generating the final output.
+
+    .data
+gets integers as parameters
+directs the assembler to allocate memory space in the data image
+that will store parameter values, and increment the DC 
+accordingly to num of params.
+** if a label is declared ** in this statement line, 
+than the label will get the IC value (before DC incrementation)
+and will be stored in symbol table. (this will point to the first value)
+
+
+    .string
+gets valid "string", string chars will be encoded by ascii values
++ null termination char at the end (0)
+** if a label is declared ** it will point to the first char
+(it will be written in symbol table, with IC of first char)
+
+
+    .mat
+can be un-initialized or initialized
+it is legal to not declare a label, but than you can not use it as operand
+
+
+    .entry
+gets label name that is *defined in current file*
+this is flagging the symbol so it could be used in other src files
+**note** if label is declared in .entry line, it will be ignored 
+example:
+    ENTRY: .entry HELLO => ⚠️ warning, label declaration ignored 
+    (HELLO will still be flagged as an entry point)
+
+
+    .extern
+gets label that is *not defined in current file*
+it is used to tell the assembler that this label is defined in other file,
+and flagged as entry point there, so current file can use the label.
+// the matching process is done by the linker
+**note** if label is declared in .extern line, it will be ignored 
+example:
+    EXTERN: .extern HELLO => ⚠️ warning, label declaration ignored 
+    (HELLO will still be declared as an external label)
+**note**
+it's not allowed to define in the same file same label as .entry and .extern.
+example:
+    .entry HELLO
+    .extern HELLO => ❌ error
+
+
+-------------------------------- tasks --------------------------------
+
+1. understand full logic and describe logic flow 

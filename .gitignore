@@ -33,3 +33,5 @@ am
 
 # Ignore Mac/Linux metadata files
 .DS_Store
+
+*.pdf
