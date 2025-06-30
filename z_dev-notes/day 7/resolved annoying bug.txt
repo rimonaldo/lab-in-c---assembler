@@ -1,0 +1,25 @@
+RESOLVED: memory issues caused by unsuported by c90 function + memory leaks are adressed aswell
+
+
+char *my_strdup(const char *s)
+{
+    /* הקצאת זיכרון עבור המחרוזת החדשה + מקום לתו מסיים ('\0') */
+    char *new_str = malloc(strlen(s) + 1);
+
+    /* בדיקה שההקצאה הצליחה */
+    if (new_str == NULL)
+    {
+        return NULL;
+    }
+
+    /* העתקת תוכן המחרוזת המקורית למחרוזת החדשה */
+    strcpy(new_str, s);
+
+    return new_str;
+}
+
+
+אין צורך לעשות קאסט במאלוק (מיותר)
+
+
+
