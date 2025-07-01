@@ -1,6 +1,7 @@
 #ifndef ENCODING_H
 #define ENCODING_H
 #include "../AST/ast.h"
+typedef char BinCode[11];
 
 typedef struct EncodedLine
 {
@@ -12,10 +13,8 @@ typedef struct EncodedLine
     struct EncodedLine *next;
 } EncodedLine;
 
-typedef char BinCode[11];
-
 /*------------- Encoding functions ------------- */
-EncodedLine *encode_instruction_line(ASTNode *inst_node);
+EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx);
 void encode_opcode(Opcode opcode, AddressingMode src_op_mode, AddressingMode dest_op_mode, EncodedLine *line);
 void encode_immediate_val(int val, EncodedLine *line);
 void encode_direct_label(char *label, int is_ext, EncodedLine *line);
