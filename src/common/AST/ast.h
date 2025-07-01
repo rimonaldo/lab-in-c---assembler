@@ -1,6 +1,6 @@
 #ifndef AST_H
 #define AST_H
-
+#include "../tokenizer/tokenizer.h"
 /*===============================
   Type Definitions (Enums)
 ===============================*/
@@ -10,7 +10,8 @@ typedef enum
     IMMEDIATE,
     DIRECT,
     MAT_ACCESS,
-    REGISTER
+    REGISTER,
+    NONE
 } AddressingMode;
 
 typedef enum
@@ -31,7 +32,7 @@ typedef enum
     JSR,
     RTS,
     STOP = 15
-    
+
 } Opcode;
 
 typedef enum
@@ -144,5 +145,10 @@ void free_ast(ASTNode *head);
 void free_operand(Operand *op);
 void free_instruction_contents(InstructionInfo *inst);
 void free_directive_contents(DirectiveInfo *dir);
+
+AddressingMode get_mode(Tokens tokenized_line, int token_idx);
+int expect_operands(Opcode opcode);
+const char *get_ad_mod_name(AddressingMode mode);
+
 
 #endif /* AST_H */

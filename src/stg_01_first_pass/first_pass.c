@@ -115,6 +115,7 @@ void run_first_pass(char *filename)
         PRINT_RAW_LINE(line);
 
         tokenized_line = tokenize_line(line);
+        int leader_idx = 0;
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
         StatementType statement_type;
@@ -147,6 +148,7 @@ void run_first_pass(char *filename)
                 PRINT_LABEL_EXISTS(leader);
             }
             /* move leader, check for instruction or directive */
+            leader_idx++;
             leader = tokenized_line.tokens[1];
             PRINT_TOKEN(leader);
         }
@@ -159,9 +161,10 @@ void run_first_pass(char *filename)
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
-            new_node = parse_instruction_line(line_number, DC, tokenized_line);
+            new_node = parse_instruction_line(line_number, DC, tokenized_line,leader_idx);
             append_ast_node(&head, &tail, new_node);
-            encode_instruction_node(&new_node);
+            encode_instruction_line(new_node,leader_idx);
+
             /* increment instruction counter */
             IC++;
         }
@@ -198,10 +201,10 @@ void run_first_pass(char *filename)
     fclose(file);
 }
 
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
+ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line,int leader_idx)
 {
     InstructionInfo info;
-    Opcode opcode = get_code(tokenized_line.tokens[0]);
+    Opcode opcode = get_code(tokenized_line.tokens[leader_idx]);
     int expected_num_op = expect_operands(opcode);
     info.opcode = opcode;
 
@@ -284,24 +287,6 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
     }
 }
 
-AddressingMode get_mode(Tokens tokenized_line, int token_idx)
-{
-    char *value = tokenized_line.tokens[token_idx];
-
-    if (is_valid_mat_access(value))
-        return MAT_ACCESS;
-    else if (is_valid_number_operand(value))
-        return IMMEDIATE;
-    else if (is_valid_register(value))
-        return REGISTER;
-    else if (is_valid_label_name(value))
-        return DIRECT;
-    else
-    {
-        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
-        return DIRECT;
-    }
-}
 
 int is_valid_number_operand(char *value)
 {
@@ -531,34 +516,6 @@ int is_valid_directive_name(char *directive)
 /*====================================================*/
 /*                  Miscellaneous Utils               */
 /*====================================================*/
-
-int expect_operands(Opcode opcode)
-{
-    switch (opcode)
-    {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 6:
-        return 2;
-    case 4:
-    case 5:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-        return 1;
-    case 14:
-    case 15:
-        return 0;
-    default:
-        return -1;
-    }
-}
 
 int is_comment_line(char *line)
 {
