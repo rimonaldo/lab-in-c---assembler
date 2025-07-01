@@ -20,11 +20,11 @@ use ast to build this?
 
 immediate => #int
             8 bits for the value itself 
-            0,1 is AER
+            0,1 is AER (alwats A = 00)
 
 direct => adress of label
             8 bits for the value itself
-            0,1 is AER
+            0,1 is AER (always E = 01 || R = 10)
 
 mat access => label + 2 registers = 2 added words
             1. the adress of mat label
