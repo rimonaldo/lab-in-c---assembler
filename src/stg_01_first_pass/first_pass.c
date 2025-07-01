@@ -5,6 +5,7 @@
 #include "../common/AST/ast.h"
 #include "../common/table/table.h"
 #include "../common/tokenizer/tokenizer.h"
+#include "../common/encoding/encoding.h"
 
 #ifdef DEBUG
 #define PRINT_DEBUG(fmt, ...)                                                           \
@@ -78,6 +79,18 @@ char *trim_whitespace(char *str)
     return trimmed;
 }
 
+StatementType get_statement_type(char *leader)
+{
+    if (is_instruction_line(leader))
+        return INSTRUCTION_STATEMENT;
+
+    else if (is_directive_line(leader))
+        return DIRECTIVE_STATEMENT;
+
+    else
+        return INVALID_STATEMENT;
+}
+
 void run_first_pass(char *filename)
 {
     int IC = 0, DC = 0;
@@ -104,15 +117,19 @@ void run_first_pass(char *filename)
         tokenized_line = tokenize_line(line);
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
+        StatementType statement_type;
 
+        /* ignore non code lines */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
         {
             line_number++;
             continue;
         }
 
+        /* could be instruction on directive line */
         if (is_label_declare(leader))
         {
+            /* add if not declared before */
             PRINT_LABEL_FOUND(leader);
             if (!table_lookup(symbol_table, leader))
             {
@@ -125,33 +142,31 @@ void run_first_pass(char *filename)
                     printf("[Insert Error] Failed to insert label\n");
             }
             else
+            {
+                /* else, handle error */
                 PRINT_LABEL_EXISTS(leader);
+            }
+            /* move leader, check for instruction or directive */
             leader = tokenized_line.tokens[1];
             PRINT_TOKEN(leader);
         }
 
-        if (is_instruction_line(leader))
+        statement_type = get_statement_type(leader);
+        switch (statement_type)
+        {
+        case INSTRUCTION_STATEMENT:
         {
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, DC, tokenized_line);
-            if (new_node)
-            {
-                if (head == NULL)
-                {
-                    head = tail = new_node;
-                }
-                else
-                {
-                    tail->next = new_node;
-                    tail = new_node;
-                }
-            }
+            append_ast_node(&head, &tail, new_node);
+            encode_instruction_node(&new_node);
             /* increment instruction counter */
             IC++;
         }
-        else if (is_directive_line(leader))
+        break;
+        case DIRECTIVE_STATEMENT:
         {
             PRINT_DIRECTIVE(leader);
             ASTNode *new_node;
@@ -169,6 +184,14 @@ void run_first_pass(char *filename)
             /* temporary, TODO token validation for each data token */
             DC += tokenized_line.count - 1;
         }
+        break;
+        case INVALID_STATEMENT:
+        {
+            /* handle error */
+        }
+        break;
+        }
+
         line_number++;
     }
     free_ast(head);

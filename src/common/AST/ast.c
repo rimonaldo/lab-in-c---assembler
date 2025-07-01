@@ -106,6 +106,22 @@ ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo di
     return node;
 }
 
+void append_ast_node(ASTNode **head, ASTNode **tail, ASTNode *new_node)
+{
+    if (new_node)
+    {
+        if (*head == NULL)
+        {
+            *head = *tail = new_node;
+        }
+        else
+        {
+            (*tail)->next = new_node;
+            *tail = new_node;
+        }
+    }
+}
+
 /**
  * @brief Frees all memory allocated for the AST (the linked list).
  *

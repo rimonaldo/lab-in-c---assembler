@@ -46,7 +46,8 @@ typedef enum
 typedef enum
 {
     INSTRUCTION_STATEMENT,
-    DIRECTIVE_STATEMENT
+    DIRECTIVE_STATEMENT,
+    INVALID_STATEMENT
 } StatementType;
 
 /*===============================
@@ -125,6 +126,8 @@ typedef struct ASTNode
 /* AST node builders*/
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
 ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
+/* Append an ASTNode to the end of the list, updating head and tail pointers */
+void append_ast_node(ASTNode **head, ASTNode **tail, ASTNode *new_node);
 
 /* Operand builders */
 Operand *create_immediate_operand(int value);
