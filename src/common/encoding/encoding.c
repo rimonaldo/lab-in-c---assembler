@@ -16,15 +16,16 @@ int inverse_idx(int bit)
 
 void write_bits(BinCode bincode, int val, int start_bit, int end_bit)
 {
+    int num_bits = end_bit - start_bit + 1;
+    int max_val = (1 << num_bits) - 1;
+    int i;
+
     if (start_bit > end_bit)
     {
         /* handle error */
         printf("INVALID: start bit: %d is larger than end bit: %d", start_bit, end_bit);
         return;
     }
-    int num_bits = end_bit - start_bit + 1;
-
-    int max_val = (1 << num_bits) - 1;
 
     if (val > max_val)
     {
@@ -32,7 +33,7 @@ void write_bits(BinCode bincode, int val, int start_bit, int end_bit)
         printf("INVALID VALUE: %d exceeds max allowed value %d for %d bits\n", val, max_val, num_bits);
         return;
     }
-    int i;
+
     for (i = 0; i < num_bits; i++)
     {
         /* shift 'val' right by i to bring the i-th bit to position 0, then mask it */
@@ -77,6 +78,7 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
         dest_ad_mod = inst_node->content.instruction.dest_op.mode;
     }
 
+    /* TODO: validate expected number of ops is not exceeded or insufficient */
     int num_exp_ops;
     num_exp_ops = expect_operands(opcode);
 
@@ -97,12 +99,23 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
     {
         /* only dest op bits */
         encode_opcode(opcode, NONE, dest_ad_mod, encoded_line);
+        /* immediate => bits 2-10 for number */
+        /* direct => bits 0,1 AER , bits 2-10 for address */
+        /* index => 2 words => 1. for address + AER, 2. for regs (row:6-9 + col:2-5) */
+        /* register => bits 2-5*/
     }
     break;
     case 2:
     {
         /* both src and dest ops bits */
         encode_opcode(opcode, src_ad_mod, dest_ad_mod, encoded_line);
+        /* immediate => bits 2-10 for number */
+        /* direct => bits 0,1 AER , bits 2-10 for address */
+        /* index => 2 words */
+        /* register => 
+            if is src && dest => 1 word => src:6-9 + dest:2-5
+            else if src => 6-9 
+            else if dest => 2-5*/
     }
     break;
     }
@@ -126,9 +139,22 @@ void encode_opcode(Opcode opcode, AddressingMode src_op_mode, AddressingMode des
     assemble_src_op_mod(bincode, src_op_mode);
     assemble_dest_op_mod(bincode, dest_op_mode);
     assemble_opcode(bincode, opcode);
-    
 }
 
+void encode_operands(AddressingMode op_mode, int word, EncodedLine *line)
+{
+    /*
+    immediate operand: 8 bits for number + 2 AER bits (LSB) => AER must be A = 00
+    direct operand: 8 bits for the adress of the label + 2 AER bits (LSB) => could be any of the AER
+    mat access: 2 words, -> 1. is label (address + AER)
+                     -> 2. 6-9 bits are row reg, 2-5 are col reg
+    register:
+    if register is src_op => 6-9 bits is reg_num bits
+    if register is dest_op => 2-5 bits are reg_num bits
+    if register is --both-- => than there is only 1 added word  2-5 bits are dest_reg_num bits
+                                                                6-9 bits is src_reg_num bits
+    */
+}
 /*--------------- encode opcode helper functions ---------------*/
 void assemble_AER(BinCode bincode, int AER)
 {
@@ -196,8 +222,6 @@ void assemble_opcode(BinCode bincode, Opcode opcode)
 {
     write_bits(bincode, opcode, 6, 9);
 }
-
-
 
 void encode_immediate_val(int val, EncodedLine *line)
 {
