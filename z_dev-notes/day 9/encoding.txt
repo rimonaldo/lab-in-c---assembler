@@ -80,3 +80,8 @@ immediate operand: 8 bits for number + 2 AER bits (LSB) => AER must be A = 00
 direct operand: 8 bits for the adress of the label + 2 AER bits (LSB) => could be any of the AER 
 mat access: 2 words, -> 1. is label (address + AER)     
                      -> 2. 6-9 bits are row reg, 2-5 are col reg
+register: 
+    if register is src_op => 6-9 bits is reg_num bits
+    if register is dest_op => 2-5 bits are reg_num bits 
+    if register is --both-- => than there is only 1 added word  2-5 bits are dest_reg_num bits 
+                                                                6-9 bits is src_reg_num bits
