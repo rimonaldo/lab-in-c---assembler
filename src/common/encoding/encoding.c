@@ -3,6 +3,31 @@
 
 #include "encoding.h"
 #include "../AST/ast.h"
+
+void init_words(BinCode words[5], int count)
+{
+    int i, j;
+    for (i = 0; i < count; i++)
+    {
+        for (j = 0; j < 10; j++)
+        {
+            words[i][j] = '0';
+        }
+    }
+}
+
+/*
+   typedef struct EncodedLine
+   {
+   ASTNode *ast_node;
+   int decimal_address;
+   char base4_address[5];
+   BinCode words[5];
+   int words_count;
+   struct EncodedLine *next;
+   } EncodedLine;
+   */
+
 int inverse_idx(int bit)
 {
     if (bit > 9 || bit < 0)
@@ -11,14 +36,49 @@ int inverse_idx(int bit)
         printf("INVALID BIT NUMBER\n");
     }
 
-    return (bit - 9) * -1;
+    return 9 - bit;
 }
+
+/* Define a function pointer type for encoding operands:
+   - returns void
+   - receives: AddressingMode, pointer to word index (for incrementing when needed), and encoded line */
+typedef void (*EncodeFunc)(AddressingMode mode, int *word_idx, EncodedLine *line, int is_src);
+
+void encode_mat_access(AddressingMode mode, int *word_idx, EncodedLine *line, int is_src)
+{
+
+    printf("Waiting for address for matrix label: %s\n", line->ast_node->content.instruction.src_op.value.label);
+    printf("encoding registers word only.\n");
+    encode_operand(mode, word_idx, line, is_src);
+}
+
+void encode_single(AddressingMode mode, int *added_word_idx, EncodedLine *line, int is_src)
+{
+    printf("Encoding single operand at word index %d, mode: %s\n", *added_word_idx, get_ad_mod_name(mode));
+    encode_operand(mode, added_word_idx, line, is_src);
+}
+
+void encode_register_pair(int *word_idx, EncodedLine *line)
+{
+    int src_reg_num = line->ast_node->content.instruction.src_op.value.reg_num;
+    int dest_reg_num = line->ast_node->content.instruction.dest_op.value.reg_num;
+    write_bits(line->words[*word_idx], src_reg_num, 6, 9);
+    write_bits(line->words[*word_idx], dest_reg_num, 2, 5);
+}
+
+EncodeFunc encoders[] = {
+    [IMMEDIATE] = encode_single,
+    [DIRECT] = encode_single,
+    [REGISTER] = encode_single,
+    [MAT_ACCESS] = encode_mat_access,
+};
 
 void write_bits(BinCode bincode, int val, int start_bit, int end_bit)
 {
     int num_bits = end_bit - start_bit + 1;
     int max_val = (1 << num_bits) - 1;
     int i;
+    int is_src = 0;
 
     if (start_bit > end_bit)
     {
@@ -45,29 +105,20 @@ void write_bits(BinCode bincode, int val, int start_bit, int end_bit)
     }
 }
 
-/*
-   typedef struct EncodedLine
-   {
-   ASTNode *ast_node;
-   int decimal_address;
-   char base4_address[5];
-   BinCode words[5];
-   int words_count;
-   struct EncodedLine *next;
-   } EncodedLine;
-   */
-
 /*------------- Encoding functions ------------- */
 EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
 {
     printf("----------- ENCODING LINE ----------- \n");
 
     EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
+    encoded_line->words_count = 0;
     Opcode opcode = inst_node->content.instruction.opcode;
     AddressingMode src_ad_mod = NONE;
     AddressingMode dest_ad_mod = NONE;
-    int i;
-
+    encoded_line->ast_node = inst_node;
+    int i, j;
+    int added_word_idx = 1;
+    int is_src = 1;
     if (inst_node->content.instruction.src_op.mode != NONE)
     {
         src_ad_mod = inst_node->content.instruction.src_op.mode;
@@ -82,51 +133,33 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
     int num_exp_ops;
     num_exp_ops = expect_operands(opcode);
 
-    for (i = 0; i < 10; i++)
+    init_words(encoded_line->words, 5);
+
+    encode_opcode(opcode, src_ad_mod, dest_ad_mod, encoded_line);
+
+    if (!((src_ad_mod == REGISTER) && (dest_ad_mod == REGISTER)))
     {
-        encoded_line->words[0][i] = '0';
+        if (src_ad_mod != NONE)
+            encoders[src_ad_mod](src_ad_mod, &added_word_idx, encoded_line, is_src);
+        encoders[dest_ad_mod](dest_ad_mod, &added_word_idx, encoded_line, !is_src);
+    }
+    else
+    {
+        encoders[src_ad_mod](src_ad_mod, &added_word_idx, encoded_line, is_src);
+        encoders[dest_ad_mod](dest_ad_mod, &added_word_idx, encoded_line, !is_src);
     }
 
-    switch (num_exp_ops)
+    /* Print all saved words for debugging */
+    printf("Encoded words:\n");
+    for (i = 0; i < encoded_line->words_count + 1; i++)
     {
-    case 0:
-    {
-        /* without src or dest ops bits */
-        encode_opcode(opcode, NONE, NONE, encoded_line);
+        printf("Word %d: ", i);
+        for (j = 0; j < 10; j++)
+        {
+            printf("%c", encoded_line->words[i][j]);
+        }
+        printf("\n");
     }
-    break;
-    case 1:
-    {
-        /* only dest op bits */
-        encode_opcode(opcode, NONE, dest_ad_mod, encoded_line);
-        /* immediate => bits 2-10 for number */
-        /* direct => bits 0,1 AER , bits 2-10 for address */
-        /* index => 2 words => 1. for address + AER, 2. for regs (row:6-9 + col:2-5) */
-        /* register => bits 2-5*/
-    }
-    break;
-    case 2:
-    {
-        /* both src and dest ops bits */
-        encode_opcode(opcode, src_ad_mod, dest_ad_mod, encoded_line);
-        /* immediate => bits 2-10 for number */
-        /* direct => bits 0,1 AER , bits 2-10 for address */
-        /* index => 2 words */
-        /* register => 
-            if is src && dest => 1 word => src:6-9 + dest:2-5
-            else if src => 6-9 
-            else if dest => 2-5*/
-    }
-    break;
-    }
-
-    /* Print the bincode for debugging */
-    printf("opcode bincode: ");
-    for (i = 0; i < 10; i++)
-    {
-        printf("%c", encoded_line->words[0][i]);
-    }
-    printf("\n");
     return encoded_line;
 }
 
@@ -141,7 +174,7 @@ void encode_opcode(Opcode opcode, AddressingMode src_op_mode, AddressingMode des
     assemble_opcode(bincode, opcode);
 }
 
-void encode_operands(AddressingMode op_mode, int word, EncodedLine *line)
+void encode_operand(AddressingMode op_mode, int *added_word_idx, EncodedLine *line, int is_src)
 {
     /*
     immediate operand: 8 bits for number + 2 AER bits (LSB) => AER must be A = 00
@@ -154,6 +187,87 @@ void encode_operands(AddressingMode op_mode, int word, EncodedLine *line)
     if register is --both-- => than there is only 1 added word  2-5 bits are dest_reg_num bits
                                                                 6-9 bits is src_reg_num bits
     */
+    switch (op_mode)
+    {
+    case IMMEDIATE:
+    {
+        int val;
+        if (added_word_idx == 1)
+            val = line->ast_node->content.instruction.src_op.value.immediate_value;
+        else
+            val = line->ast_node->content.instruction.dest_op.value.immediate_value;
+
+        write_bits(line->words[*added_word_idx], val, 2, 9);
+        line->words_count++;
+        (*added_word_idx)++;
+    }
+    break;
+    case DIRECT:
+    {
+        char *label_name;
+        if (added_word_idx == 1)
+            label_name = line->ast_node->content.instruction.src_op.value.label;
+        else
+            label_name = line->ast_node->content.instruction.dest_op.value.label;
+        printf("Waiting for address for label: %s\n", label_name);
+        (*added_word_idx)++;
+        line->words_count++;
+    }
+    break;
+    case MAT_ACCESS:
+    {
+        int row_reg_num;
+        int col_reg_num;
+        if (is_src)
+        {
+            row_reg_num = line->ast_node->content.instruction.src_op.value.index.row_reg_num;
+            col_reg_num = line->ast_node->content.instruction.src_op.value.index.col_reg_num;
+        }
+        else
+        {
+            row_reg_num = line->ast_node->content.instruction.dest_op.value.index.row_reg_num;
+            col_reg_num = line->ast_node->content.instruction.dest_op.value.index.col_reg_num;
+        }
+        write_bits(line->words[*added_word_idx], row_reg_num, 6, 9);
+        (*added_word_idx)++;
+        line->words_count++;
+        write_bits(line->words[*added_word_idx], col_reg_num, 2, 5);
+        (*added_word_idx)++;
+        line->words_count++;
+    }
+    break;
+    case REGISTER:
+    {
+        int reg_num;
+        int start_bit;
+        int end_bit;
+        int is_dest_mode_reg = line->ast_node->content.instruction.dest_op.mode == REGISTER;
+        if (is_src)
+        {
+            reg_num = line->ast_node->content.instruction.src_op.value.reg_num;
+            start_bit = 6;
+            end_bit = 9;
+            write_bits(line->words[*added_word_idx], reg_num, start_bit, end_bit);
+            if (!is_dest_mode_reg)
+            {
+                (*added_word_idx)++;
+                line->words_count++;
+            }
+        }
+        else
+        {
+            reg_num = line->ast_node->content.instruction.dest_op.value.reg_num;
+            start_bit = 2;
+            end_bit = 5;
+            write_bits(line->words[*added_word_idx], reg_num, start_bit, end_bit);
+            line->words_count++;
+        }
+    }
+    break;
+
+    default:
+        break;
+    }
 }
 /*--------------- encode opcode helper functions ---------------*/
 void assemble_AER(BinCode bincode, int AER)
@@ -221,23 +335,6 @@ void assemble_dest_op_mod(BinCode bincode, AddressingMode mode)
 void assemble_opcode(BinCode bincode, Opcode opcode)
 {
     write_bits(bincode, opcode, 6, 9);
-}
-
-void encode_immediate_val(int val, EncodedLine *line)
-{
-    printf("Encoding immediate value: %d\n", val);
-}
-void encode_direct_label(char *label, int is_ext, EncodedLine *line)
-{
-    printf("Encoding direct label: %s, is_ext: %d\n", label, is_ext);
-}
-void encode_mat_access(char *label, int row_reg_num, int col_reg_num, int is_ext, EncodedLine *line)
-{
-    printf("Encoding matrix access: label=%s, row_reg_num=%d, col_reg_num=%d, is_ext=%d\n", label, row_reg_num, col_reg_num, is_ext);
-}
-void encode_register(int reg_num, EncodedLine *line)
-{
-    printf("Encoding register: reg_num=%d\n", reg_num);
 }
 
 /*------------- bit convertions functions ------------- */
