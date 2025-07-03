@@ -161,9 +161,9 @@ void run_first_pass(char *filename)
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
-            new_node = parse_instruction_line(line_number, DC, tokenized_line,leader_idx);
+            new_node = parse_instruction_line(line_number, DC, tokenized_line, leader_idx);
             append_ast_node(&head, &tail, new_node);
-            encode_instruction_line(new_node,leader_idx);
+            encode_instruction_line(new_node, leader_idx);
 
             /* increment instruction counter */
             IC++;
@@ -201,13 +201,15 @@ void run_first_pass(char *filename)
     fclose(file);
 }
 
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line,int leader_idx)
+ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int leader_idx)
 {
+    /*TODO: memeset*/
     InstructionInfo info;
     Opcode opcode = get_code(tokenized_line.tokens[leader_idx]);
     int expected_num_op = expect_operands(opcode);
     info.opcode = opcode;
-
+    info.src_op.mode = NONE;
+    info.dest_op.mode = NONE;
     printf("--> Expected operands: %d\n", expected_num_op);
 
     switch (expected_num_op)
@@ -275,18 +277,26 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
     case MAT:
+        /* Parse matrix access: label[reg1][reg2] */
         operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
-        operand_to_parse->value.index.reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
-        printf("Matrix label: %s, Register index: %d\n",
+        operand_to_parse->value.index.row_reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
+        operand_to_parse->value.index.col_reg_num = atoi(tokenized_line.tokens[token_idx + 2] + 1);
+        printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
-               operand_to_parse->value.index.reg_num);
+               operand_to_parse->value.index.row_reg_num,
+               operand_to_parse->value.index.col_reg_num);
         break;
+    case NONE:
+    {
+        /*TODO: not entering*/
+        printf("WE HAVE CASE NONE");
+    }
+    break;
     default:
         printf("Unknown operand mode.\n");
         break;
     }
 }
-
 
 int is_valid_number_operand(char *value)
 {
