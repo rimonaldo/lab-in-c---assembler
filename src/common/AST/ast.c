@@ -218,8 +218,8 @@ AddressingMode get_mode(Tokens tokenized_line, int token_idx)
         return DIRECT;
     else
     {
-        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
-        return DIRECT;
+        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming NONE.\n", value);
+        return NONE;
     }
 }
 
@@ -231,10 +231,10 @@ int expect_operands(Opcode opcode)
     case 1:
     case 2:
     case 3:
-    case 6:
-        return 2;
     case 4:
+        return 2;
     case 5:
+    case 6:
     case 7:
     case 8:
     case 9:
@@ -251,18 +251,19 @@ int expect_operands(Opcode opcode)
     }
 }
 
-const char *get_ad_mod_name(AddressingMode mode){
+const char *get_ad_mod_name(AddressingMode mode)
+{
     switch (mode)
     {
-        case IMMEDIATE:
-            return "IMMEDIATE";
-        case DIRECT:
-            return "DIRECT";
-        case MAT_ACCESS:
-            return "MAT_ACCESS";
-        case REGISTER:
-            return "REGISTER";
-        default:
-            return "UNKNOWN";
+    case IMMEDIATE:
+        return "IMMEDIATE";
+    case DIRECT:
+        return "DIRECT";
+    case MAT_ACCESS:
+        return "MAT_ACCESS";
+    case REGISTER:
+        return "REGISTER";
+    default:
+        return "NONE";
     }
 }

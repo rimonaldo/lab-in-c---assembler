@@ -65,7 +65,8 @@ typedef struct Operand
         struct               /* for MATRIX_ACCESS */
         {
             char *label; /* label of the matrix */
-            int reg_num; /* register holding the index */
+            int row_reg_num; /* register holding the index */
+            int col_reg_num; /* register holding the index */
         } index;
     } value;
     AddressingMode mode;
