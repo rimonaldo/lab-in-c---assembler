@@ -269,10 +269,9 @@ void encode_opcode(Opcode opcode, AddressingMode src_op_mode, AddressingMode des
 
     assemble_AER(*bincode, 0); /* Instruction word is always Absolute */
     if (src_op_mode < 4)
-    {
         assemble_src_op_mod(*bincode, src_op_mode);
-    }
-    assemble_dest_op_mod(*bincode, dest_op_mode);
+    if (dest_op_mode < 4)
+        assemble_dest_op_mod(*bincode, dest_op_mode);
     assemble_opcode(*bincode, opcode);
 }
 
