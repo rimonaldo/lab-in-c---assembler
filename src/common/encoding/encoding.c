@@ -268,7 +268,10 @@ void encode_opcode(Opcode opcode, AddressingMode src_op_mode, AddressingMode des
     printf("src_ad_mod: %s, dest_ad_mod: %s\n", get_ad_mod_name(src_op_mode), get_ad_mod_name(dest_op_mode));
 
     assemble_AER(*bincode, 0); /* Instruction word is always Absolute */
-    assemble_src_op_mod(*bincode, src_op_mode);
+    if (src_op_mode < 4)
+    {
+        assemble_src_op_mod(*bincode, src_op_mode);
+    }
     assemble_dest_op_mod(*bincode, dest_op_mode);
     assemble_opcode(*bincode, opcode);
 }
@@ -328,7 +331,7 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
     for (i = 0; i < encoded_line->words_count; i++)
     {
         printf("Word %d: ", i);
-        if (!encoded_line->is_waiting_words[i])
+        if (encoded_line->is_waiting_words[i] != 1)
         {
             for (j = 0; j < 10; j++)
             {
