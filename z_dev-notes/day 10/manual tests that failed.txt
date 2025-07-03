@@ -1,0 +1,31 @@
+
+FILENAME: output/prog2.am
+╔════════════════════════════╗
+║        [ Line   3 ]        ║
+╚════════════════════════════╝
+  Raw Line     : MAIN:       mov     r3, COUNT       ; Copy COUNT to r3
+  Token        : MAIN:
+  Label Found  : MAIN:
+  Label Insert : 'MAIN' @ 0
+  Token        : mov
+  Instruction  : opcode = 0
+--> Expected operands: 2
+  Operand 1    : mov
+  Operand 2    : r3
+Parsing operand at token index 1: mov
+Detected addressing mode: DIRECT (label)
+Direct label: mov
+Parsing operand at token index 2: r3
+Detected addressing mode: REGISTER
+Register number: 3
+----------- ENCODING LINE ----------- 
+src_ad_mod: DIRECT, dest_ad_mod: REGISTER
+Encoding single operand at word index 1, mode: DIRECT
+Waiting for address for label: mov
+Encoded words:
+Word 0: 0000011100
+Word 1: ?
+Word 2: 0000001100
+
+* an instruction line with label declaration
+- src_op_mode and dest_op_mod in wrong order
