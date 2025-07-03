@@ -218,8 +218,8 @@ AddressingMode get_mode(Tokens tokenized_line, int token_idx)
         return DIRECT;
     else
     {
-        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming NONE.\n", value);
-        return NONE;
+        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
+        return DIRECT;
     }
 }
 
