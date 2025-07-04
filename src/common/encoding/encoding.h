@@ -25,4 +25,8 @@ void write_bits(BinCode bincode, int val, int start_bit, int end_bit);
 void append_encoded_line(ASTNode **head, ASTNode **tail, EncodedLine *new_line);
 void free_encoded_line_list(EncodedLine *head);
 
+
+/* Define a function pointer type for encoding specific operand addressing modes */
+typedef void (*EncodeFunc)(AddressingMode mode, int *word_idx, EncodedLine *line, int is_src);
+
 #endif

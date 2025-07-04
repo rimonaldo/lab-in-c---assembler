@@ -23,8 +23,6 @@
   } EncodedLine;
 */
 
-/* Define a function pointer type for encoding specific operand addressing modes */
-typedef void (*EncodeFunc)(AddressingMode mode, int *word_idx, EncodedLine *line, int is_src);
 
 /* ----------------LOW-LEVEL BIT & MEMORY UTILITIES---------------- */
 /**
@@ -239,6 +237,7 @@ void encode_operand(AddressingMode op_mode, int *added_word_idx, EncodedLine *li
 /* Wrapper for operands that need a single extra word (Immediate, Direct) */
 void encode_single(AddressingMode mode, int *added_word_idx, EncodedLine *line, int is_src)
 {
+    /*TODO: print module + print stats */
     printf("Encoding single operand at word index %d, mode: %s\n", *added_word_idx, get_ad_mod_name(mode));
     encode_operand(mode, added_word_idx, line, is_src);
 }
@@ -306,8 +305,10 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
     if (src_ad_mod == REGISTER && dest_ad_mod == REGISTER)
     {
         /* Special case: both operands are registers, share one word */
-        write_bits(encoded_line->words[added_word_idx], inst_node->content.instruction.src_op.value.reg_num, 6, 9);
-        write_bits(encoded_line->words[added_word_idx], inst_node->content.instruction.dest_op.value.reg_num, 2, 5);
+        int src_reg_num = inst_node->content.instruction.src_op.value.reg_num;
+        int dest_reg_num = inst_node->content.instruction.dest_op.value.reg_num;
+        write_bits(encoded_line->words[added_word_idx], src_reg_num, 6, 9);
+        write_bits(encoded_line->words[added_word_idx], dest_reg_num, 2, 5);
         assemble_AER(encoded_line->words[added_word_idx], 0);
         encoded_line->words_count++;
     }

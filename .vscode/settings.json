@@ -10,6 +10,7 @@
         "first_pass.h": "c",
         "preprocessor.h": "c",
         "table.h": "c",
-        "encoding.h": "c"
+        "encoding.h": "c",
+        "stdlib.h": "c"
     }
 }
