@@ -1,0 +1,7 @@
+- refine and finish memory addresses logic (IC, DC)
+- directives, entern and extern managment
+- fix wrong encoding for insturction with label declaration
+    - --> Expected operands: 2
+            Operand 1    : mov
+            Operand 2    : r3
+- than this will be ready for stable push first pass 
