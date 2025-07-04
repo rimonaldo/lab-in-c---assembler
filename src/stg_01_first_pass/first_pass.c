@@ -215,14 +215,14 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int
     switch (expected_num_op)
     {
     case 1:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        parse_operand(&(info.dest_op), tokenized_line, 1);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        parse_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        PRINT_OPERAND(2, tokenized_line.tokens[2]);
-        parse_operand(&(info.src_op), tokenized_line, 1);
-        parse_operand(&(info.dest_op), tokenized_line, 2);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
+        parse_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        parse_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
         break;
     default:
         printf("--> No operands expected.\n");

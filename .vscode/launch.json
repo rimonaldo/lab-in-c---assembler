@@ -7,9 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/am",
             "args": [
-                "input/prog3/input.as",
                 "input/prog3/prog1.as",
-                "input/prog3/prog2.as"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
