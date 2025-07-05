@@ -267,11 +267,9 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
         break;
     case DIRECT:
-    {
         operand_to_parse->value.label = my_strdup(tokenized_line.tokens[token_idx]);
         printf("Direct label: %s\n", operand_to_parse->value.label);
-    }
-    break;
+        break;
     case REGISTER:
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);

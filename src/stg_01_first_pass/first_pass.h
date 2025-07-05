@@ -4,7 +4,7 @@
 #include "../common/tokenizer/tokenizer.h"
 
 void run_first_pass(char *filename);
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line,int leader_idx);
+ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int leader_idx);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line);
 int is_label_declare(char *token);
 int is_instruction_line(char *leader);
@@ -21,4 +21,22 @@ int is_comment_line(char *token);
 int is_empty_line(Tokens tokens);
 
 const char *addressing_mode_name(AddressingMode mode);
+
+void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
+
+typedef enum
+{
+    SYMBOL_DATA,
+    SYMBOL_CODE,
+    SYMBOL_EXTERN
+} SymbolType;
+
+typedef struct LabelInfo
+{
+    char name[31];
+    int address;
+    SymbolType type;
+    int is_entry;
+} LabelInfo;
+
 #endif
