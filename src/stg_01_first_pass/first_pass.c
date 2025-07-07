@@ -93,6 +93,7 @@ StatementType get_statement_type(char *leader)
 
 void run_first_pass(char *filename)
 {
+    int is_label_declaration = 0;
     int IC = 0, DC = 0;
     Table *symbol_table = table_create();
     FILE *file = fopen(filename, "r");
@@ -119,6 +120,8 @@ void run_first_pass(char *filename)
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
         StatementType statement_type;
+        SymbolInfo *symbol_info = malloc(sizeof(SymbolInfo));
+        memset(symbol_info, 0, sizeof(SymbolInfo));
 
         /* ignore non code lines */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
@@ -130,6 +133,7 @@ void run_first_pass(char *filename)
         /* could be instruction on directive line */
         if (is_label_declare(leader))
         {
+            is_label_declaration = 1;
             /* add if not declared before */
             PRINT_LABEL_FOUND(leader);
             if (!table_lookup(symbol_table, leader))
@@ -137,6 +141,9 @@ void run_first_pass(char *filename)
                 char clean_label[strlen(leader)];
                 strncpy(clean_label, leader, strlen(leader) - 1);
                 clean_label[strlen(leader) - 1] = '\0';
+
+                *symbol_info->name = clean_label;
+                symbol_info->address = 1;
                 if (table_insert(symbol_table, clean_label, IC))
                     PRINT_LABEL_INSERT(clean_label, IC);
                 else
@@ -158,6 +165,8 @@ void run_first_pass(char *filename)
         {
         case INSTRUCTION_STATEMENT:
         {
+            if (is_label_declaration)
+                symbol_info->type = SYMBOL_CODE;
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
@@ -171,9 +180,11 @@ void run_first_pass(char *filename)
         break;
         case DIRECTIVE_STATEMENT:
         {
+            if (is_label_declaration)
+                symbol_info->type = SYMBOL_DATA;
             PRINT_DIRECTIVE(leader);
             ASTNode *new_node;
-            new_node = parse_directive_line(DC, tokenized_line);
+            new_node = parse_directive_line(DC, tokenized_line, leader_idx);
             if (head == NULL)
             {
                 head = tail = new_node;
@@ -183,6 +194,7 @@ void run_first_pass(char *filename)
                 tail->next = new_node;
                 tail = new_node;
             }
+
             /* increment data counter */
             /* temporary, TODO token validation for each data token */
             DC += tokenized_line.count - 1;
@@ -199,6 +211,22 @@ void run_first_pass(char *filename)
     }
     free_ast(head);
     fclose(file);
+}
+
+DirectiveType get_directive_type(char *dir)
+{
+    if (strcmp(dir, ".data") == 0)
+        return DATA;
+    else if (strcmp(dir, ".string") == 0)
+        return STRING;
+    else if (strcmp(dir, ".mat") == 0)
+        return MAT;
+    else if (strcmp(dir, ".entry") == 0)
+        return ENTRY;
+    else if (strcmp(dir, ".extern") == 0)
+        return EXTERN;
+    else
+        return ERROR_DIRECTIVE;
 }
 
 ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int leader_idx)
@@ -232,20 +260,58 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int
     return create_instruction_node(line_num, NULL, info);
 }
 
-ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx)
 {
-    DirectiveInfo *info;
-    info = malloc(sizeof(DirectiveInfo));
+    DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
     {
         printf("Failed to allocate DirectiveInfo\n");
         return NULL;
     }
-    info->type = DATA;
-    info->params.data.values = 2;
-    info->params.data.size = 1;
-    info->type = 0;
-    return create_directive_node(line_num, ".data", *info);
+
+    info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
+
+    if (info->type == DATA || info->type == MAT)
+    {
+        int data_count = tokenized_line.count - (leader_idx + 1);
+        int mat_inc = 0;
+        if (info->type == MAT)
+        {
+            mat_inc += 6;
+            data_count = atoi(tokenized_line.tokens[leader_idx + 2]) * atoi(tokenized_line.tokens[leader_idx + 5]);
+        }
+        int *values = malloc((sizeof(int)) * data_count);
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+        int i;
+
+        for (i = 0; i < data_count; i++)
+        {
+            /*TODO: handle error , , empty value*/
+            /*REFACTOR TODO: wrong mat tokens parsing, sepeartion of tokens for indecies and registers, ATM adjusting indecies */
+            char *data_value_token = tokenized_line.tokens[leader_idx + 1 + i + mat_inc];
+            int err = -200;
+            int is_missing_val = strcmp(data_value_token, ",") == 0;
+            /* if token was 2 adjacent ',' in a row*/
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                values[i] = err;
+            }
+            else
+                values[i] = atoi(tokenized_line.tokens[leader_idx + 1 + i + mat_inc]);
+        }
+
+        info->params.data.values = values;
+        info->params.data.size = data_count;
+    }
+
+    return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
 }
 
 /*====================================================*/
@@ -274,7 +340,7 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
-    case MAT:
+    case MAT_ACCESS:
         /* Parse matrix access: label[reg1][reg2] */
         operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
         operand_to_parse->value.index.row_reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);

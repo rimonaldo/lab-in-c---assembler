@@ -71,7 +71,7 @@ ASTNode *create_instruction_node(int line_num, const char *label, InstructionInf
  * @param directive Structure containing all information about the directive.
  * @return ASTNode* Pointer to the newly created node, or NULL if memory allocation fails.
  */
-ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive)
+ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo *directive)
 {
     /* 1. Dynamically allocate memory for the new node */
     ASTNode *node = (ASTNode *)malloc(sizeof(ASTNode));
@@ -101,7 +101,7 @@ ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo di
 
     /* 3. Initialize directive-specific fields */
     node->type = DIRECTIVE_STATEMENT;
-    node->content.directive = directive; /* Copy the entire directive struct */
+    node->content.directive = *directive; /* Copy the entire directive struct */
 
     /* 4. Return the new node */
     return node;
