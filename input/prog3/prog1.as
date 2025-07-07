@@ -16,7 +16,7 @@ MAIN:    mov  A, r1
 .entry MAIN
 
 ; Data Section
-A:       .data 4
+A:       .data 4, 2, 6, ,,, 12
 B:       .data 3
 RESULT:  .data 0
 
