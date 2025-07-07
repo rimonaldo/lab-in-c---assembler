@@ -23,6 +23,9 @@ RESULT:  .data 0
 ; Matrix ERROR Example (missing row or col size)
 MATRIX1: .mat [3]
 
+; Matrix INIT Example (initialize rest of values to 0)
+MATRIX2: .mat [3][2] 1, 2, 3
+
 ; String Example (unused)
 MSG:     .string "Done"
 

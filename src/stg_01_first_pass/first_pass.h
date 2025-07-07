@@ -4,9 +4,9 @@
 #include "../common/tokenizer/tokenizer.h"
 
 void run_first_pass(char *filename);
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int leader_idx);
-ASTNode *parse_directive_line(int line_num, Tokens tokenized_line,int leader_idx);
-int is_label_declare(char *token);
+ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx);
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr);
+int is_symbol_declare(char *token);
 int is_instruction_line(char *leader);
 int is_directive_line(char *leader);
 
