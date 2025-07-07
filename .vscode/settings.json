@@ -12,6 +12,7 @@
         "table.h": "c",
         "encoding.h": "c",
         "stdlib.h": "c",
-        "ctype.h": "c"
+        "ctype.h": "c",
+        "file_utils.h": "c"
     }
 }

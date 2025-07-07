@@ -6,6 +6,7 @@
 #include "../common/table/table.h"
 #include "../common/tokenizer/tokenizer.h"
 #include "../common/encoding/encoding.h"
+#include "../common/utils/utils.h"
 
 #ifdef DEBUG
 #define PRINT_DEBUG(fmt, ...)                                                           \
@@ -262,6 +263,10 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int
 
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx)
 {
+    const char *delimeter = ",";
+    int data_size = tokenized_line.count - (leader_idx + 1);
+    int data_val_idx, i;
+
     DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
     {
@@ -271,32 +276,30 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
 
     info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
 
-    if (info->type == DATA || info->type == MAT)
+    switch (info->type)
     {
-        int data_count = tokenized_line.count - (leader_idx + 1);
-        int mat_inc = 0;
-        if (info->type == MAT)
-        {
-            mat_inc += 6;
-            data_count = atoi(tokenized_line.tokens[leader_idx + 2]) * atoi(tokenized_line.tokens[leader_idx + 5]);
-        }
-        int *values = malloc((sizeof(int)) * data_count);
+    case DATA:
+    {
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
         if (!values)
         {
             printf("Failed to allocate values array\n");
             free(info);
             return NULL;
         }
-        int i;
 
-        for (i = 0; i < data_count; i++)
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
         {
-            /*TODO: handle error , , empty value*/
-            /*REFACTOR TODO: wrong mat tokens parsing, sepeartion of tokens for indecies and registers, ATM adjusting indecies */
-            char *data_value_token = tokenized_line.tokens[leader_idx + 1 + i + mat_inc];
+            data_val_idx = leader_idx + 1 + i;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
             int err = -200;
-            int is_missing_val = strcmp(data_value_token, ",") == 0;
-            /* if token was 2 adjacent ',' in a row*/
+
+            /* if token was 2 (or more) adjacent ',' in a row */
             if (is_missing_val)
             {
                 printf("ERROR: MISSING VALUE\n");
@@ -304,13 +307,84 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
                 values[i] = err;
             }
             else
-                values[i] = atoi(tokenized_line.tokens[leader_idx + 1 + i + mat_inc]);
+                values[i] = atoi(tokenized_line.tokens[data_val_idx]);
         }
 
+        /* populate info fields */
         info->params.data.values = values;
-        info->params.data.size = data_count;
+        info->params.data.size = data_size;
+    }
+    break;
+    case MAT:
+    {
+        /* validate .mat directive format */
+        char *size_row = tokenized_line.tokens[leader_idx + 2];
+        char *size_col = tokenized_line.tokens[leader_idx + 5];
+        if (!is_valid_number(size_row) || !is_valid_number(size_col))
+        {
+            /* handle error */
+            printf("ERROR: missing row or col size in mat directive ");
+            break;
+        }
+
+        /* adjust data count */
+        data_size = atoi(size_row) * atoi(size_col);
+
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
+        {
+            int mat_increment = 6;
+            int data_val_idx = leader_idx + 1 + i + mat_increment;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
+            int err = -200;
+
+            /* if token was 2 (or more) adjacent ',' in a row */
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                values[i] = err;
+            }
+            else
+                values[i] = atoi(tokenized_line.tokens[data_val_idx]);
+        }
+
+        /* populate info fields */
+        info->params.data.values = values;
+        info->params.data.size = data_size;
+    }
+    break;
+    case STRING:
+    {
+    }
+    break;
+    case ENTRY:
+    {
+    }
+    break;
+    case EXTERN:
+    {
+    }
+    break;
+    case ERROR_DIRECTIVE:
+    {
+    }
+    break;
     }
 
+    info->params.data.size = data_size;
     return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
 }
 

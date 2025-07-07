@@ -14,14 +14,14 @@ MAIN:    mov  A, r1
 
 ; Subroutine defined in external file
 .entry MAIN
-
-; Data Section
+; data ERROR example (missing values)
 A:       .data 4, 2, 6, ,,, 12
+; Data Section
 B:       .data 3
 RESULT:  .data 0
 
-; Matrix Example (unused in program, for demonstration)
-MATRIX1: .mat [2][3] 1, 2, 3, 4, 5, 6
+; Matrix ERROR Example (missing row or col size)
+MATRIX1: .mat [3]
 
 ; String Example (unused)
 MSG:     .string "Done"
