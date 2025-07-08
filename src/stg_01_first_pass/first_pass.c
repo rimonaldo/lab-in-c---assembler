@@ -314,9 +314,9 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
                 values[i] = atoi(data_value_token);
                 /* increment data counter */
                 (*DC_ptr)++;
-                PRINT_DC(*DC_ptr);
             }
         }
+        PRINT_DC(*DC_ptr);
 
         /* populate info fields */
         info->params.data.values = values;
@@ -371,10 +371,10 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
                 values[i] = atoi(data_value_token);
                 /* increment data counter */
                 (*DC_ptr)++;
-                PRINT_DC(*DC_ptr);
             }
         }
 
+        PRINT_DC(*DC_ptr);
         /* populate info fields */
         info->params.data.values = values;
         info->params.data.size = data_size;
