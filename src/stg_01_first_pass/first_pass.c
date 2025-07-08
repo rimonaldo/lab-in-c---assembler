@@ -40,6 +40,7 @@
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 #define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
 
+
 /**
  * A custom implementation of strdup for debugging purposes.
  * It allocates memory with malloc and copies the string content.
@@ -146,8 +147,9 @@ void run_first_pass(char *filename)
 
                 *symbol_info->name = clean_label;
                 symbol_info->address = 1;
-                if (table_insert(symbol_table, clean_label, IC))
-                    PRINT_LABEL_INSERT(clean_label, IC);
+                /* insert to table with DC before Data increment as address */
+                if (table_insert(symbol_table, clean_label, DC))
+                    PRINT_LABEL_INSERT(clean_label, DC);
                 else
                     printf("[Insert Error] Failed to insert label\n");
             }
@@ -212,6 +214,7 @@ void run_first_pass(char *filename)
 
         line_number++;
     }
+
     free_ast(head);
     fclose(file);
 }
