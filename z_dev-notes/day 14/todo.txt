@@ -1,0 +1,10 @@
+
+mvp:
+unwrite from table if no success in parsing statement (invalid statement)
+base4 conversion
+.ext & .ent files
+
+nice to have:
+error handling
+refactor
+efficient table lookups
