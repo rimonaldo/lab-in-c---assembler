@@ -38,6 +38,7 @@
 #define PRINT_DIRECTIVE(s) printf("  \033[1;34mDirective    :\033[0m %s\n", s)
 #define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
+#define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
 
 /**
  * A custom implementation of strdup for debugging purposes.
@@ -186,6 +187,7 @@ void run_first_pass(char *filename)
                 symbol_info->type = SYMBOL_DATA;
             PRINT_DIRECTIVE(leader);
             ASTNode *new_node;
+            /*TODO: refactor data count not as side effect*/
             new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
             if (head == NULL)
             {
@@ -265,7 +267,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
 {
     const char *delimeter = ",";
     int data_size = tokenized_line.count - (leader_idx + 1);
-    int data_val_idx, i;
+    int data_val_idx;
 
     DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
@@ -282,6 +284,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     {
         /* allocate values array */
         int *values = malloc((sizeof(int)) * data_size);
+        int i = 0;
         if (!values)
         {
             printf("Failed to allocate values array\n");
@@ -309,8 +312,9 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             else if (is_valid_number(data_value_token))
             {
                 values[i] = atoi(data_value_token);
+                /* increment data counter */
                 (*DC_ptr)++;
-                printf("________________________________Data counter: %d\n", *DC_ptr);
+                PRINT_DC(*DC_ptr);
             }
         }
 
@@ -321,6 +325,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     break;
     case MAT:
     {
+        int i;
         /* validate .mat directive format */
         char *size_row = tokenized_line.tokens[leader_idx + 2];
         char *size_col = tokenized_line.tokens[leader_idx + 5];
@@ -364,8 +369,9 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             else if (is_valid_number(data_value_token))
             {
                 values[i] = atoi(data_value_token);
+                /* increment data counter */
                 (*DC_ptr)++;
-                printf("_____________________________________________Data counter: %d\n", *DC_ptr);
+                PRINT_DC(*DC_ptr);
             }
         }
 
@@ -376,7 +382,32 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     break;
     case STRING:
     {
-        
+        int i;
+        int data_val_idx = leader_idx + 1;
+        char *data_val_token = tokenized_line.tokens[data_val_idx];
+        data_size = strlen(data_val_token);
+        char delimeter = '"';
+        int str_len = data_size - 2;
+        char *str_buffer = malloc(str_len + 1);
+        if (!str_buffer)
+        {
+            printf("ERROR: failed to allocate string buffer\n");
+            break;
+        }
+
+        if (data_size < 2 || data_val_token[0] != '"' || data_val_token[data_size - 1] != '"')
+        {
+            printf("ERROR: invalid string token: %s\n", data_val_token);
+            break;
+        }
+
+        for (i = 0; i < str_len; i++)
+            str_buffer[i] = data_val_token[i + 1];
+
+        str_buffer[str_len] = '\0';
+        (*DC_ptr) += str_len + 1;
+        PRINT_DC(*DC_ptr);
+        printf("string is: %s", str_buffer);
     }
     break;
     case ENTRY:
