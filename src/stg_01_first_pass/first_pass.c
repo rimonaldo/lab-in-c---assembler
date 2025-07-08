@@ -6,6 +6,7 @@
 #include "../common/table/table.h"
 #include "../common/tokenizer/tokenizer.h"
 #include "../common/encoding/encoding.h"
+#include "../common/utils/utils.h"
 
 #ifdef DEBUG
 #define PRINT_DEBUG(fmt, ...)                                                           \
@@ -37,6 +38,15 @@
 #define PRINT_DIRECTIVE(s) printf("  \033[1;34mDirective    :\033[0m %s\n", s)
 #define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
+#define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
+
+void print_symbol(const char *key, void *data)
+{
+    SymbolInfo *info = (SymbolInfo *)data;
+    printf("  [%s] Address: %d, Type: %s\n", key, info->address,
+           info->type == SYMBOL_CODE ? "CODE" : info->type == SYMBOL_DATA ? "DATA"
+                                                                          : "UNKNOWN");
+}
 
 /**
  * A custom implementation of strdup for debugging purposes.
@@ -93,6 +103,7 @@ StatementType get_statement_type(char *leader)
 
 void run_first_pass(char *filename)
 {
+    int is_label_declaration = 0;
     int IC = 0, DC = 0;
     Table *symbol_table = table_create();
     FILE *file = fopen(filename, "r");
@@ -100,8 +111,8 @@ void run_first_pass(char *filename)
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
-    ASTNode *head = NULL;
-    ASTNode *tail = NULL;
+    ASTNode *head = NULL, *tail = NULL;
+    char *clean_label;
     if (!file)
     {
         perror("Error opening file");
@@ -119,6 +130,8 @@ void run_first_pass(char *filename)
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
         StatementType statement_type;
+        SymbolInfo *symbol_info = malloc(sizeof(SymbolInfo));
+        memset(symbol_info, 0, sizeof(SymbolInfo));
 
         /* ignore non code lines */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
@@ -128,28 +141,28 @@ void run_first_pass(char *filename)
         }
 
         /* could be instruction on directive line */
-        if (is_label_declare(leader))
+        if (is_symbol_declare(leader))
         {
-            /* add if not declared before */
+            is_label_declaration = 1;
             PRINT_LABEL_FOUND(leader);
-            if (!table_lookup(symbol_table, leader))
+            int is_declared = table_lookup(symbol_table, leader);
+            /* if not declared before add to table */
+            if (!is_declared)
             {
-                char clean_label[strlen(leader)];
+                clean_label = malloc(strlen(leader));
                 strncpy(clean_label, leader, strlen(leader) - 1);
                 clean_label[strlen(leader) - 1] = '\0';
-                if (table_insert(symbol_table, clean_label, IC))
-                    PRINT_LABEL_INSERT(clean_label, IC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
+
+                *symbol_info->name = clean_label;
             }
             else
             {
                 /* else, handle error */
                 PRINT_LABEL_EXISTS(leader);
             }
-            /* move leader, check for instruction or directive */
-            leader_idx++;
-            leader = tokenized_line.tokens[1];
+
+            /* move leader to next token */
+            leader = tokenized_line.tokens[++leader_idx];
             PRINT_TOKEN(leader);
         }
 
@@ -158,34 +171,59 @@ void run_first_pass(char *filename)
         {
         case INSTRUCTION_STATEMENT:
         {
+
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
-            new_node = parse_instruction_line(line_number, DC, tokenized_line, leader_idx);
+            new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             append_ast_node(&head, &tail, new_node);
-            encode_instruction_line(new_node, leader_idx);
 
-            /* increment instruction counter */
-            IC++;
+            if (new_node->status == SUCCESS)
+            {
+                encode_instruction_line(new_node, leader_idx);
+                if (is_label_declaration >= 0)
+                {
+                    symbol_info->type = SYMBOL_CODE;
+                    symbol_info->address = IC;
+                    /* insert to table with DC before Data increment as address */
+                    if (table_insert(symbol_table, clean_label, symbol_info))
+                        PRINT_LABEL_INSERT(clean_label, IC);
+                    else
+                        printf("[Insert Error] Failed to insert label\n");
+                    is_label_declaration = -1;
+                }
+                /* increment instruction counter */
+                IC++;
+            }
         }
         break;
         case DIRECTIVE_STATEMENT:
         {
+            if (is_label_declaration)
+                symbol_info->type = SYMBOL_DATA;
             PRINT_DIRECTIVE(leader);
             ASTNode *new_node;
-            new_node = parse_directive_line(DC, tokenized_line);
-            if (head == NULL)
+            int pre_inc_DC = DC;
+
+            new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
+            if (new_node->status == SUCCESS)
             {
-                head = tail = new_node;
+                append_ast_node(&head, &tail, new_node);
+                if (is_label_declaration >= 0)
+                {
+                    symbol_info->type = SYMBOL_DATA;
+                    symbol_info->address = pre_inc_DC;
+                    /* insert to table with DC before Data increment as address */
+                    if (table_insert(symbol_table, clean_label, symbol_info))
+                        PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
+                    else
+                        printf("[Insert Error] Failed to insert label\n");
+                    is_label_declaration = -1;
+                }
             }
-            else
-            {
-                tail->next = new_node;
-                tail = new_node;
-            }
+
             /* increment data counter */
             /* temporary, TODO token validation for each data token */
-            DC += tokenized_line.count - 1;
         }
         break;
         case INVALID_STATEMENT:
@@ -197,11 +235,31 @@ void run_first_pass(char *filename)
 
         line_number++;
     }
+    printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
+    table_print(symbol_table, print_symbol);
+    printf("_____________________________________\n");
+
     free_ast(head);
     fclose(file);
 }
 
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int leader_idx)
+DirectiveType get_directive_type(char *dir)
+{
+    if (strcmp(dir, ".data") == 0)
+        return DATA;
+    else if (strcmp(dir, ".string") == 0)
+        return STRING;
+    else if (strcmp(dir, ".mat") == 0)
+        return MAT;
+    else if (strcmp(dir, ".entry") == 0)
+        return ENTRY;
+    else if (strcmp(dir, ".extern") == 0)
+        return EXTERN;
+    else
+        return ERROR_DIRECTIVE;
+}
+
+ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx)
 {
     /*TODO: memeset*/
     InstructionInfo info;
@@ -210,19 +268,20 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int
     info.opcode = opcode;
     info.src_op.mode = NONE;
     info.dest_op.mode = NONE;
+    info.status = SUCCESS;
     printf("--> Expected operands: %d\n", expected_num_op);
 
     switch (expected_num_op)
     {
     case 1:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        parse_operand(&(info.dest_op), tokenized_line, 1);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        info.status = (&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        PRINT_OPERAND(2, tokenized_line.tokens[2]);
-        parse_operand(&(info.src_op), tokenized_line, 1);
-        parse_operand(&(info.dest_op), tokenized_line, 2);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
+        info.status = parse_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        info.status = parse_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
         break;
     default:
         printf("--> No operands expected.\n");
@@ -232,27 +291,180 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line, int
     return create_instruction_node(line_num, NULL, info);
 }
 
-ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr)
 {
-    DirectiveInfo *info;
-    info = malloc(sizeof(DirectiveInfo));
+    const char *delimeter = ",";
+    int data_size = tokenized_line.count - (leader_idx + 1);
+    int data_val_idx;
+
+    DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
     {
         printf("Failed to allocate DirectiveInfo\n");
         return NULL;
     }
-    info->type = DATA;
-    info->params.data.values = 2;
-    info->params.data.size = 1;
-    info->type = 0;
-    return create_directive_node(line_num, ".data", *info);
+    info->status = SUCCESS;
+    info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
+
+    switch (info->type)
+    {
+    case DATA:
+    {
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
+        int i = 0;
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
+        {
+            data_val_idx = leader_idx + 1 + i;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
+            int err = -200;
+
+            /* if token was 2 (or more) adjacent ',' in a row */
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                info->status = ERR1;
+                values[i] = err;
+            }
+            else if (is_valid_number(data_value_token))
+            {
+                values[i] = atoi(data_value_token);
+                /* increment data counter */
+                (*DC_ptr)++;
+            }
+        }
+        PRINT_DC(*DC_ptr);
+
+        /* populate info fields */
+        info->params.data.values = values;
+        info->params.data.size = data_size;
+    }
+    break;
+    case MAT:
+    {
+        int i;
+        /* validate .mat directive format */
+        char *size_row = tokenized_line.tokens[leader_idx + 2];
+        char *size_col = tokenized_line.tokens[leader_idx + 5];
+        if (!is_valid_number(size_row) || !is_valid_number(size_col))
+        {
+            /* handle error */
+            printf("ERROR: missing row or col size in mat directive ");
+            info->status = ERR1;
+            break;
+        }
+
+        /* adjust data count */
+        data_size = atoi(size_row) * atoi(size_col);
+
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
+        {
+            int mat_increment = 6;
+            int data_val_idx = leader_idx + 1 + i + mat_increment;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
+            int err = -200;
+
+            /* if token was 2 (or more) adjacent ',' in a row */
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                values[i] = err;
+                info->status = ERR1;
+                break;
+            }
+            else if (is_valid_number(data_value_token))
+            {
+                values[i] = atoi(data_value_token);
+                /* increment data counter */
+            }
+            (*DC_ptr)++;
+        }
+
+        PRINT_DC(*DC_ptr);
+        /* populate info fields */
+        info->params.data.values = values;
+        info->params.data.size = data_size;
+    }
+    break;
+    case STRING:
+    {
+        int i;
+        int data_val_idx = leader_idx + 1;
+        char *data_val_token = tokenized_line.tokens[data_val_idx];
+        data_size = strlen(data_val_token);
+        char delimeter = '"';
+        int str_len = data_size - 2;
+        char *str_buffer = malloc(str_len + 1);
+        if (!str_buffer)
+        {
+            printf("ERROR: failed to allocate string buffer\n");
+            break;
+        }
+
+        if (data_size < 2 || data_val_token[0] != '"' || data_val_token[data_size - 1] != '"')
+        {
+            printf("ERROR: invalid string token: %s\n", data_val_token);
+            break;
+        }
+
+        for (i = 0; i < str_len; i++)
+            str_buffer[i] = data_val_token[i + 1];
+
+        str_buffer[str_len] = '\0';
+        (*DC_ptr) += str_len + 1;
+        PRINT_DC(*DC_ptr);
+        printf("string is: %s", str_buffer);
+    }
+    break;
+    case ENTRY:
+    {
+    }
+    break;
+    case EXTERN:
+    {
+    }
+    break;
+    case ERROR_DIRECTIVE:
+    {
+    }
+    break;
+    }
+
+    info->params.data.size = data_size;
+    return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
 }
 
 /*====================================================*/
 /*                 Operand Parsing Utils              */
 /*====================================================*/
 
-void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+Status parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
 
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
@@ -267,16 +479,14 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
         break;
     case DIRECT:
-    {
         operand_to_parse->value.label = my_strdup(tokenized_line.tokens[token_idx]);
         printf("Direct label: %s\n", operand_to_parse->value.label);
-    }
-    break;
+        break;
     case REGISTER:
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
-    case MAT:
+    case MAT_ACCESS:
         /* Parse matrix access: label[reg1][reg2] */
         operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
         operand_to_parse->value.index.row_reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
@@ -289,13 +499,13 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
     case NONE:
     {
         /*TODO: not entering*/
+        /* handle error */
+        return ERR1;
         printf("WE HAVE CASE NONE");
     }
     break;
-    default:
-        printf("Unknown operand mode.\n");
-        break;
     }
+    return SUCCESS;
 }
 
 int is_valid_number_operand(char *value)
@@ -393,6 +603,8 @@ const char *addressing_mode_name(AddressingMode mode)
         return "REGISTER";
     case MAT_ACCESS:
         return "MAT_ACCESS";
+    case NONE:
+        return "NONE";
     default:
         return "UNKNOWN";
     }
@@ -402,7 +614,7 @@ const char *addressing_mode_name(AddressingMode mode)
 /*                Label & Directive Utils             */
 /*====================================================*/
 
-int is_label_declare(char *token)
+int is_symbol_declare(char *token)
 {
     int len = strlen(token);
     return (is_valid_label_name(token) && token[len - 1] == ':');

@@ -8,16 +8,17 @@ Tokens tokenize_line(const char *line)
     Tokens result;
     memset(&result, 0, sizeof(Tokens));
     int i = 0, len = strlen(line);
+    int expecting_value = 0;
 
     while (i < len && result.count < MAX_TOKENS)
     {
-        int j = 0; /* Reset j for each token */
+        int j = 0;
 
-        /* Skip whitespace and commas */
-        while (i < len && (isspace(line[i]) || line[i] == ','))
+        /* Skip whitespace */
+        while (i < len && isspace(line[i]))
             i++;
 
-        /* If we hit a comment, store the rest of the line as a comment token */
+        /* Handle comment */
         if (i < len && line[i] == ';')
         {
             j = 0;
@@ -28,21 +29,31 @@ Tokens tokenize_line(const char *line)
             break;
         }
 
-        /* End of line */
-        if (i >= len)
-            break;
+        /* If current char is ',' */
+        if (i < len && line[i] == ',')
+        {
+            if (expecting_value)
+            {
+                strcpy(result.tokens[result.count++], ",");
+            }
+            expecting_value = 1; 
+            i++;
+            continue;
+        }
 
-        /* Handle special single-char tokens as standalone */
-        if (strchr("[]()", line[i]))
+        /* Handle special one-char tokens */
+        if (i < len && strchr("[]()", line[i]))
         {
             result.tokens[result.count][0] = line[i];
             result.tokens[result.count][1] = '\0';
             result.count++;
             i++;
+            expecting_value = 0;
             continue;
         }
 
-        /* Collect characters for a normal token */
+        /* If we reach here, it's a real token */
+        j = 0;
         while (
             i < len &&
             !isspace(line[i]) &&
@@ -55,6 +66,13 @@ Tokens tokenize_line(const char *line)
         }
         result.tokens[result.count][j] = '\0';
         result.count++;
+        expecting_value = 0;
+    }
+
+    /* סוף שורה נגמרה בפסיק? סימן שחסרה מחרוזת אחרי */
+    if (expecting_value && result.count < MAX_TOKENS)
+    {
+        strcpy(result.tokens[result.count++], "");
     }
 
     return result;

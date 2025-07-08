@@ -3,6 +3,14 @@
 
 .extern PRINT_CHAR
 
+
+
+
+CODE:    mov  A, r1
+         add  B, r1
+         bne  MAIN
+
+
 MAIN:    mov  A, r1
          add  B, r1
          mov  r1, r2
@@ -14,17 +22,31 @@ MAIN:    mov  A, r1
 
 ; Subroutine defined in external file
 .entry MAIN
-
+; data ERROR example (missing values)
+A:       .data 4, 2, 6, ,,, 12
 ; Data Section
-A:       .data 4
 B:       .data 3
 RESULT:  .data 0
 
-; Matrix Example (unused in program, for demonstration)
-MATRIX1: .mat [2][3] 1, 2, 3, 4, 5, 6
+; Matrix ERROR Example (missing row or col size)
+MATRIX1: .mat [3]
+
+; Matrix INIT Example (initialize rest of values to 0)
+MATRIX2: .mat [3][2] 1, 2, 3
 
 ; String Example (unused)
 MSG:     .string "Done"
+
+MAIN2:    mov  A, r1
+         add  B, r1
+         mov  r1, r2
+         add  r2, r1
+         mov  r1, RESULT
+         lea  RESULT, r3
+         jsr  PRINT_CHAR
+         stop
+
+WRONG: mov A
 
 ; Macro Example
 mcro DOUBLE

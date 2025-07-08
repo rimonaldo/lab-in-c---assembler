@@ -178,3 +178,26 @@ void table_for_each(Table *table, void (*callback)(const char *key, void *data, 
         current = current->next;
     }
 }
+
+/**
+ * @brief Prints the contents of the table using a provided print function.
+ *
+ * @param table The table to print.
+ * @param print_func A function that prints a single entry (key and data).
+ */
+void table_print(Table *table, void (*print_func)(const char *key, void *data))
+{
+    TableNode *current;
+
+    if (table == NULL || print_func == NULL)
+    {
+        return;
+    }
+
+    current = table->head;
+    while (current != NULL)
+    {
+        print_func(current->key, current->data);
+        current = current->next;
+    }
+}

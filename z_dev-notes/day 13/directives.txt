@@ -1,0 +1,30 @@
+.data
+- increment DC by each valid value
+
+.mat 
+- increment DC by rows * cols
+- init any un-inited val as 0
+
+.string
+- increment DC by string length +1 (for \0)
+
+.entry
+- request to write label as entry point in .ent
+
+.extern
+- append to symbol table
+- adress is 0 (unknown, to be set in linker)
+
+
+** NOTE
+at the end of first pass -> all the data symbols will be increased by 100
+that is to make a seperation from the instructions to the data
+
+--------- .ent file format ---------
+- lines of text
+- label_name : base4_address
+
+
+--------- .ext file format ---------
+- lines of text
+- label_name : base4_address of referencing label encounter (for each encounter)

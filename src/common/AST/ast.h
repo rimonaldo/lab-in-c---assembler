@@ -7,6 +7,13 @@
 
 typedef enum
 {
+    SUCCESS = 500,
+    ERR1,
+    ERR2,
+} Status;
+
+typedef enum
+{
     IMMEDIATE,
     DIRECT,
     MAT_ACCESS,
@@ -37,11 +44,13 @@ typedef enum
 
 typedef enum
 {
+    INIT_DIRECTIVE,
     DATA,
     STRING,
     MAT,
     ENTRY,
-    EXTERN
+    EXTERN,
+    ERROR_DIRECTIVE
 } DirectiveType;
 
 typedef enum
@@ -64,7 +73,7 @@ typedef struct Operand
         int reg_num;         /* for DIRECT_REGISTER */
         struct               /* for MATRIX_ACCESS */
         {
-            char *label; /* label of the matrix */
+            char *label;     /* label of the matrix */
             int row_reg_num; /* register holding the index */
             int col_reg_num; /* register holding the index */
         } index;
@@ -90,6 +99,7 @@ typedef struct InstructionInfo
     int num_operands;
     Operand src_op;
     Operand dest_op;
+    Status status;
 } InstructionInfo;
 
 typedef struct DirectiveInfo
@@ -105,6 +115,7 @@ typedef struct DirectiveInfo
         char *str;   /* for STRING directive */
         char *label; /* for ENTRY or EXTERN directives */
     } params;
+    Status status;
 } DirectiveInfo;
 
 typedef struct ASTNode
@@ -117,7 +128,7 @@ typedef struct ASTNode
         InstructionInfo instruction;
         DirectiveInfo directive;
     } content;
-
+    Status status;
     struct ASTNode *next; /* pointer to next AST node */
 } ASTNode;
 
@@ -127,7 +138,7 @@ typedef struct ASTNode
 
 /* AST node builders*/
 ASTNode *create_instruction_node(int line_num, const char *label, InstructionInfo instruction);
-ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive);
+ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo *directive);
 /* Append an ASTNode to the end of the list, updating head and tail pointers */
 void append_ast_node(ASTNode **head, ASTNode **tail, ASTNode *new_node);
 
@@ -150,6 +161,5 @@ void free_directive_contents(DirectiveInfo *dir);
 AddressingMode get_mode(Tokens tokenized_line, int token_idx);
 int expect_operands(Opcode opcode);
 const char *get_ad_mod_name(AddressingMode mode);
-
 
 #endif /* AST_H */
