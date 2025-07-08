@@ -179,7 +179,7 @@ void run_first_pass(char *filename)
             append_ast_node(&head, &tail, new_node);
             encode_instruction_line(new_node, leader_idx);
 
-            if (is_label_declaration)
+            if (is_label_declaration >= 0)
             {
                 symbol_info->type = SYMBOL_CODE;
                 symbol_info->address = IC;
@@ -188,6 +188,7 @@ void run_first_pass(char *filename)
                     PRINT_LABEL_INSERT(clean_label, IC);
                 else
                     printf("[Insert Error] Failed to insert label\n");
+                is_label_declaration = -1;
             }
             /* increment instruction counter */
             IC++;
@@ -203,7 +204,7 @@ void run_first_pass(char *filename)
 
             /*TODO: refactor data count not as side effect*/
             new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
-            if (is_label_declaration)
+            if (is_label_declaration >= 0)
             {
                 symbol_info->type = SYMBOL_DATA;
                 symbol_info->address = pre_inc_DC;
@@ -212,6 +213,7 @@ void run_first_pass(char *filename)
                     PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
                 else
                     printf("[Insert Error] Failed to insert label\n");
+                is_label_declaration = -1;
             }
             if (head == NULL)
             {
