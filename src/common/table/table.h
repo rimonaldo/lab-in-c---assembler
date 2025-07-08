@@ -83,4 +83,7 @@ void* table_lookup(Table* table, const char* key);
  */
 void table_for_each(Table* table, void (*callback)(const char* key, void* data, void* user_context), void* user_context);
 
+
+void table_print(Table *table, void (*print_func)(const char *key, void *data));
+
 #endif /* TABLE_H */
