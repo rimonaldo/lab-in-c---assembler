@@ -7,6 +7,13 @@
 
 typedef enum
 {
+    SUCCESS = 500,
+    ERR1,
+    ERR2,
+} Status;
+
+typedef enum
+{
     IMMEDIATE,
     DIRECT,
     MAT_ACCESS,
@@ -92,6 +99,7 @@ typedef struct InstructionInfo
     int num_operands;
     Operand src_op;
     Operand dest_op;
+    Status status;
 } InstructionInfo;
 
 typedef struct DirectiveInfo
@@ -107,6 +115,7 @@ typedef struct DirectiveInfo
         char *str;   /* for STRING directive */
         char *label; /* for ENTRY or EXTERN directives */
     } params;
+    Status status;
 } DirectiveInfo;
 
 typedef struct ASTNode
@@ -119,7 +128,7 @@ typedef struct ASTNode
         InstructionInfo instruction;
         DirectiveInfo directive;
     } content;
-
+    Status status;
     struct ASTNode *next; /* pointer to next AST node */
 } ASTNode;
 

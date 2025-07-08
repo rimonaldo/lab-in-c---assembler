@@ -22,7 +22,7 @@ int is_empty_line(Tokens tokens);
 
 const char *addressing_mode_name(AddressingMode mode);
 
-void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
+Status parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
 
 typedef enum
 {

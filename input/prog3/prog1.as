@@ -46,6 +46,7 @@ MAIN2:    mov  A, r1
          jsr  PRINT_CHAR
          stop
 
+WRONG: mov A
 
 ; Macro Example
 mcro DOUBLE

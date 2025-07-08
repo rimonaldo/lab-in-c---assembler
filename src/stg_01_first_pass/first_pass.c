@@ -177,21 +177,24 @@ void run_first_pass(char *filename)
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             append_ast_node(&head, &tail, new_node);
-            encode_instruction_line(new_node, leader_idx);
 
-            if (is_label_declaration >= 0)
+            if (new_node->status == SUCCESS)
             {
-                symbol_info->type = SYMBOL_CODE;
-                symbol_info->address = IC;
-                /* insert to table with DC before Data increment as address */
-                if (table_insert(symbol_table, clean_label, symbol_info))
-                    PRINT_LABEL_INSERT(clean_label, IC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
-                is_label_declaration = -1;
+                encode_instruction_line(new_node, leader_idx);
+                if (is_label_declaration >= 0)
+                {
+                    symbol_info->type = SYMBOL_CODE;
+                    symbol_info->address = IC;
+                    /* insert to table with DC before Data increment as address */
+                    if (table_insert(symbol_table, clean_label, symbol_info))
+                        PRINT_LABEL_INSERT(clean_label, IC);
+                    else
+                        printf("[Insert Error] Failed to insert label\n");
+                    is_label_declaration = -1;
+                }
+                /* increment instruction counter */
+                IC++;
             }
-            /* increment instruction counter */
-            IC++;
         }
         break;
         case DIRECTIVE_STATEMENT:
@@ -202,27 +205,21 @@ void run_first_pass(char *filename)
             ASTNode *new_node;
             int pre_inc_DC = DC;
 
-            /*TODO: refactor data count not as side effect*/
             new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
-            if (is_label_declaration >= 0)
+            if (new_node->status == SUCCESS)
             {
-                symbol_info->type = SYMBOL_DATA;
-                symbol_info->address = pre_inc_DC;
-                /* insert to table with DC before Data increment as address */
-                if (table_insert(symbol_table, clean_label, symbol_info))
-                    PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
-                is_label_declaration = -1;
-            }
-            if (head == NULL)
-            {
-                head = tail = new_node;
-            }
-            else
-            {
-                tail->next = new_node;
-                tail = new_node;
+                append_ast_node(&head, &tail, new_node);
+                if (is_label_declaration >= 0)
+                {
+                    symbol_info->type = SYMBOL_DATA;
+                    symbol_info->address = pre_inc_DC;
+                    /* insert to table with DC before Data increment as address */
+                    if (table_insert(symbol_table, clean_label, symbol_info))
+                        PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
+                    else
+                        printf("[Insert Error] Failed to insert label\n");
+                    is_label_declaration = -1;
+                }
             }
 
             /* increment data counter */
@@ -271,19 +268,20 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
     info.opcode = opcode;
     info.src_op.mode = NONE;
     info.dest_op.mode = NONE;
+    info.status = SUCCESS;
     printf("--> Expected operands: %d\n", expected_num_op);
 
     switch (expected_num_op)
     {
     case 1:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
-        parse_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
+        info.status = (&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
         PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
-        parse_operand(&(info.src_op), tokenized_line, leader_idx + 1);
-        parse_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
+        info.status = parse_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        info.status = parse_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
         break;
     default:
         printf("--> No operands expected.\n");
@@ -305,7 +303,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         printf("Failed to allocate DirectiveInfo\n");
         return NULL;
     }
-
+    info->status = SUCCESS;
     info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
 
     switch (info->type)
@@ -337,6 +335,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             {
                 printf("ERROR: MISSING VALUE\n");
                 /* handle error */
+                info->status = ERR1;
                 values[i] = err;
             }
             else if (is_valid_number(data_value_token))
@@ -363,6 +362,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         {
             /* handle error */
             printf("ERROR: missing row or col size in mat directive ");
+            info->status = ERR1;
             break;
         }
 
@@ -395,6 +395,8 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
                 printf("ERROR: MISSING VALUE\n");
                 /* handle error */
                 values[i] = err;
+                info->status = ERR1;
+                break;
             }
             else if (is_valid_number(data_value_token))
             {
@@ -462,7 +464,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
 /*                 Operand Parsing Utils              */
 /*====================================================*/
 
-void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+Status parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
 
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
@@ -497,13 +499,13 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
     case NONE:
     {
         /*TODO: not entering*/
+        /* handle error */
+        return ERR1;
         printf("WE HAVE CASE NONE");
     }
     break;
-    default:
-        printf("Unknown operand mode.\n");
-        break;
     }
+    return SUCCESS;
 }
 
 int is_valid_number_operand(char *value)
@@ -601,6 +603,8 @@ const char *addressing_mode_name(AddressingMode mode)
         return "REGISTER";
     case MAT_ACCESS:
         return "MAT_ACCESS";
+    case NONE:
+        return "NONE";
     default:
         return "UNKNOWN";
     }
