@@ -40,6 +40,13 @@
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 #define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
 
+void print_symbol(const char *key, void *data)
+{
+    SymbolInfo *info = (SymbolInfo *)data;
+    printf("  [%s] Address: %d, Type: %s\n", key, info->address,
+           info->type == SYMBOL_CODE ? "CODE" : info->type == SYMBOL_DATA ? "DATA"
+                                                                          : "UNKNOWN");
+}
 
 /**
  * A custom implementation of strdup for debugging purposes.
@@ -105,6 +112,7 @@ void run_first_pass(char *filename)
     Tokens tokenized_line;
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
+    char *clean_label;
     if (!file)
     {
         perror("Error opening file");
@@ -141,17 +149,11 @@ void run_first_pass(char *filename)
             /* if not declared before add to table */
             if (!is_declared)
             {
-                char clean_label[strlen(leader)];
+                clean_label = malloc(strlen(leader));
                 strncpy(clean_label, leader, strlen(leader) - 1);
                 clean_label[strlen(leader) - 1] = '\0';
 
                 *symbol_info->name = clean_label;
-                symbol_info->address = 1;
-                /* insert to table with DC before Data increment as address */
-                if (table_insert(symbol_table, clean_label, DC))
-                    PRINT_LABEL_INSERT(clean_label, DC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
             }
             else
             {
@@ -170,8 +172,6 @@ void run_first_pass(char *filename)
         case INSTRUCTION_STATEMENT:
         {
 
-            if (is_label_declaration)
-                symbol_info->type = SYMBOL_CODE;
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
@@ -179,6 +179,16 @@ void run_first_pass(char *filename)
             append_ast_node(&head, &tail, new_node);
             encode_instruction_line(new_node, leader_idx);
 
+            if (is_label_declaration)
+            {
+                symbol_info->type = SYMBOL_CODE;
+                symbol_info->address = IC;
+                /* insert to table with DC before Data increment as address */
+                if (table_insert(symbol_table, clean_label, symbol_info))
+                    PRINT_LABEL_INSERT(clean_label, IC);
+                else
+                    printf("[Insert Error] Failed to insert label\n");
+            }
             /* increment instruction counter */
             IC++;
         }
@@ -189,8 +199,20 @@ void run_first_pass(char *filename)
                 symbol_info->type = SYMBOL_DATA;
             PRINT_DIRECTIVE(leader);
             ASTNode *new_node;
+            int pre_inc_DC = DC;
+
             /*TODO: refactor data count not as side effect*/
             new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
+            if (is_label_declaration)
+            {
+                symbol_info->type = SYMBOL_DATA;
+                symbol_info->address = pre_inc_DC;
+                /* insert to table with DC before Data increment as address */
+                if (table_insert(symbol_table, clean_label, symbol_info))
+                    PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
+                else
+                    printf("[Insert Error] Failed to insert label\n");
+            }
             if (head == NULL)
             {
                 head = tail = new_node;
@@ -214,6 +236,9 @@ void run_first_pass(char *filename)
 
         line_number++;
     }
+    printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
+    table_print(symbol_table, print_symbol);
+    printf("_____________________________________\n");
 
     free_ast(head);
     fclose(file);
@@ -373,8 +398,8 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             {
                 values[i] = atoi(data_value_token);
                 /* increment data counter */
-                (*DC_ptr)++;
             }
+            (*DC_ptr)++;
         }
 
         PRINT_DC(*DC_ptr);

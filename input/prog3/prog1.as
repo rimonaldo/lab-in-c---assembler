@@ -3,6 +3,14 @@
 
 .extern PRINT_CHAR
 
+
+
+
+CODE:    mov  A, r1
+         add  B, r1
+         bne  MAIN
+
+
 MAIN:    mov  A, r1
          add  B, r1
          mov  r1, r2
@@ -28,6 +36,16 @@ MATRIX2: .mat [3][2] 1, 2, 3
 
 ; String Example (unused)
 MSG:     .string "Done"
+
+MAIN2:    mov  A, r1
+         add  B, r1
+         mov  r1, r2
+         add  r2, r1
+         mov  r1, RESULT
+         lea  RESULT, r3
+         jsr  PRINT_CHAR
+         stop
+
 
 ; Macro Example
 mcro DOUBLE
