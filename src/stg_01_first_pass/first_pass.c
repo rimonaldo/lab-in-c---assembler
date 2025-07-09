@@ -43,9 +43,49 @@
 void print_symbol(const char *key, void *data)
 {
     SymbolInfo *info = (SymbolInfo *)data;
-    printf("  [%s] Address: %d, Type: %s\n", key, info->address,
-           info->type == SYMBOL_CODE ? "CODE" : info->type == SYMBOL_DATA ? "DATA"
-                                                                          : "UNKNOWN");
+
+    printf("  [%s] Address: %d, Type: ",
+           key,
+           info->address);
+
+    switch (info->type)
+    {
+    case SYMBOL_CODE:
+        printf("CODE");
+        break;
+    case SYMBOL_DATA:
+        printf("DATA");
+        break;
+    case SYMBOL_EXTERN:
+        printf("EXTERN");
+        break;
+    default:
+        printf("UNKNOWN");
+        break;
+    }
+    printf("\n");
+}
+
+void print_extern(const char *key, void *data)
+{
+    if (!key || !data)
+    {
+        printf("Invalid extern data\n");
+        return;
+    }
+    int address = *(int *)data;
+    printf("  [EXTERN] %s @ %d\n", key, address);
+}
+
+void print_entry(const char *key, void *data)
+{
+    if (!key || !data)
+    {
+        printf("Invalid extern data\n");
+        return;
+    }
+    int address = *(int *)data;
+    printf("  [ENTRY] %s @ %d\n", key, address);
 }
 
 /**
@@ -113,6 +153,8 @@ void run_first_pass(char *filename)
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
     char *clean_label;
+    Table *ext_table = table_create();
+    Table *ent_table = table_create();
     if (!file)
     {
         perror("Error opening file");
@@ -171,16 +213,16 @@ void run_first_pass(char *filename)
         {
         case INSTRUCTION_STATEMENT:
         {
-
+            EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
             Opcode opcode = get_code(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             append_ast_node(&head, &tail, new_node);
 
-            if (new_node->status == SUCCESS)
+            if (new_node->status != ERR1)
             {
-                encode_instruction_line(new_node, leader_idx);
+                encoded_line = encode_instruction_line(new_node, leader_idx);
                 if (is_label_declaration >= 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
@@ -193,7 +235,7 @@ void run_first_pass(char *filename)
                     is_label_declaration = -1;
                 }
                 /* increment instruction counter */
-                IC++;
+                IC += encoded_line->words_count;
             }
         }
         break;
@@ -208,11 +250,47 @@ void run_first_pass(char *filename)
             new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
             if (new_node->status == SUCCESS)
             {
+                symbol_info->type = SYMBOL_DATA;
+
                 append_ast_node(&head, &tail, new_node);
-                if (is_label_declaration >= 0)
+                symbol_info->is_entry = -1;
+                symbol_info->is_extern = -1;
+                if (new_node->content.directive.type == ENTRY)
                 {
-                    symbol_info->type = SYMBOL_DATA;
-                    symbol_info->address = pre_inc_DC;
+                    symbol_info->is_entry = 1;
+                    char *label_token = tokenized_line.tokens[leader_idx + 1];
+                    clean_label = malloc(strlen(label_token + 1));
+                    strncpy(clean_label, label_token, strlen(label_token));
+                    clean_label[strlen(label_token) + 1] = '\0';
+                    int *address = malloc(sizeof(int));
+                    *address = -100;
+                    table_insert(ent_table, clean_label, address);
+                }
+                if (new_node->content.directive.type == EXTERN)
+                {
+                    symbol_info->type = SYMBOL_EXTERN;
+
+                    char *label_token = tokenized_line.tokens[leader_idx + 1];
+                    symbol_info->is_extern = 1;
+                    clean_label = malloc(strlen(label_token + 1));
+                    strncpy(clean_label, label_token, strlen(label_token));
+                    clean_label[strlen(label_token) + 1] = '\0';
+                    int *address = malloc(sizeof(int));
+                    *address = pre_inc_DC;
+                    table_insert(ext_table, clean_label, address);
+                }
+
+                if (is_label_declaration == true || symbol_info->is_extern == true)
+                {
+                    if (is_label_declaration && (symbol_info->type == ENTRY || symbol_info->type == EXTERN))
+                    {
+                        warn("entry or extern used in label declaration");
+                    }
+                    if (symbol_info->is_extern == true)
+                        symbol_info->address = 0;
+                    else
+                        symbol_info->address = pre_inc_DC;
+
                     /* insert to table with DC before Data increment as address */
                     if (table_insert(symbol_table, clean_label, symbol_info))
                         PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
@@ -237,6 +315,10 @@ void run_first_pass(char *filename)
     }
     printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
     table_print(symbol_table, print_symbol);
+    printf("\n\033[1;36mEXTERN TABLE:\033[0m\n");
+    table_print(ext_table, print_extern);
+    printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
+    table_print(ent_table, print_extern);
     printf("_____________________________________\n");
 
     free_ast(head);
@@ -275,7 +357,7 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
     {
     case 1:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
-        info.status = (&(info.dest_op), tokenized_line, leader_idx + 1);
+        info.status = parse_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
@@ -444,6 +526,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     break;
     case ENTRY:
     {
+        printf("entry");
     }
     break;
     case EXTERN:
