@@ -37,6 +37,7 @@ typedef struct SymbolInfo
     int address;
     SymbolType type;
     int is_entry;
+    int is_extern
 } SymbolInfo;
 
 #endif
