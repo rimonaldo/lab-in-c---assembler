@@ -39,7 +39,7 @@ typedef enum
     JSR,
     RTS,
     STOP = 15
-
+    
 } Opcode;
 
 typedef enum

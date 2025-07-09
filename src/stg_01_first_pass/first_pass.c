@@ -2,159 +2,23 @@
 #include <stdio.h>
 #include <string.h>
 #include "first_pass.h"
-#include "../common/AST/ast.h"
-#include "../common/table/table.h"
-#include "../common/tokenizer/tokenizer.h"
-#include "../common/encoding/encoding.h"
-#include "../common/utils/utils.h"
 
-#ifdef DEBUG
-#define PRINT_DEBUG(fmt, ...)                                                           \
-    do                                                                                  \
-    {                                                                                   \
-        fprintf(stderr, "\033[1;90m[DEBUG]\033[0m %s:%d \033[3m%s()\033[0m: " fmt "\n", \
-                __FILE__, __LINE__, __func__, ##__VA_ARGS__);                           \
-    } while (0)
-#else
-#define PRINT_DEBUG(fmt, ...) \
-    do                        \
-    {                         \
-    } while (0)
-#endif
+char *my_strdup(const char *s);
+char *trim_whitespace(char *str);
 
-/* --- Parsing Output Helpers --- */
-
-#define PRINT_LINE(n) printf("\n\033[1;36m╔════════════════════════════╗\n" \
-                             "║        [ Line %3d ]        ║\n"             \
-                             "╚════════════════════════════╝\033[0m\n",     \
-                             n)
-
-#define PRINT_RAW_LINE(s) printf("  \033[0;37mRaw Line     :\033[0m %s", s)
-#define PRINT_TOKEN(t) printf("  \033[0;32mToken        :\033[0m %s\n", t)
-#define PRINT_LABEL_FOUND(l) printf("  \033[1;33mLabel Found  :\033[0m %s\n", l)
-#define PRINT_LABEL_INSERT(l, a) printf("  \033[0;36mLabel Insert :\033[0m '%s' @ %d\n", l, a)
-#define PRINT_LABEL_EXISTS(l) printf("  \033[1;31mLabel Error  :\033[0m '%s' already exists\n", l)
-#define PRINT_INSTRUCTION(o) printf("  \033[1;35mInstruction  :\033[0m opcode = %d\n", o)
-#define PRINT_DIRECTIVE(s) printf("  \033[1;34mDirective    :\033[0m %s\n", s)
-#define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
-#define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
-#define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
-
-void print_symbol(const char *key, void *data)
-{
-    SymbolInfo *info = (SymbolInfo *)data;
-
-    printf("  [%s] Address: %d, Type: ",
-           key,
-           info->address);
-
-    switch (info->type)
-    {
-    case SYMBOL_CODE:
-        printf("CODE");
-        break;
-    case SYMBOL_DATA:
-        printf("DATA");
-        break;
-    case SYMBOL_EXTERN:
-        printf("EXTERN");
-        break;
-    default:
-        printf("UNKNOWN");
-        break;
-    }
-    printf("\n");
-}
-
-void print_extern(const char *key, void *data)
-{
-    if (!key || !data)
-    {
-        printf("Invalid extern data\n");
-        return;
-    }
-    int address = *(int *)data;
-    printf("  [EXTERN] %s @ %d\n", key, address);
-}
-
-void print_entry(const char *key, void *data)
-{
-    if (!key || !data)
-    {
-        printf("Invalid extern data\n");
-        return;
-    }
-    int address = *(int *)data;
-    printf("  [ENTRY] %s @ %d\n", key, address);
-}
-
-/**
- * A custom implementation of strdup for debugging purposes.
- * It allocates memory with malloc and copies the string content.
- */
-char *my_strdup(const char *s)
-{
-    /* הקצאת זיכרון עבור המחרוזת החדשה + מקום לתו מסיים ('\0') */
-    char *new_str = malloc(strlen(s) + 1);
-
-    /* בדיקה שההקצאה הצליחה */
-    if (new_str == NULL)
-    {
-        return NULL;
-    }
-
-    /* העתקת תוכן המחרוזת המקורית למחרוזת החדשה */
-    strcpy(new_str, s);
-
-    return new_str;
-}
-
-char *trim_whitespace(char *str)
-{
-    static char trimmed[1024];
-    int i = 0, j = 0;
-    if (!str)
-    {
-        trimmed[0] = '\0';
-        return trimmed;
-    }
-    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
-        i++;
-    for (; str[i] != '\0'; i++)
-    {
-        if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
-            trimmed[j++] = str[i];
-    }
-    trimmed[j] = '\0';
-    return trimmed;
-}
-
-StatementType get_statement_type(char *leader)
-{
-    if (is_instruction_line(leader))
-        return INSTRUCTION_STATEMENT;
-
-    else if (is_directive_line(leader))
-        return DIRECTIVE_STATEMENT;
-
-    else
-        return INVALID_STATEMENT;
-}
-
+/* -------------- MAIN DRIVER -------------- */
 void run_first_pass(char *filename)
 {
     int is_label_declaration = 0;
     int IC = 0, DC = 0;
-    Table *symbol_table = table_create();
+    Table *symbol_table = table_create(), *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
-    char line[1024];
+    char line[1024]; /* move to machine definitions */
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
     char *clean_label;
-    Table *ext_table = table_create();
-    Table *ent_table = table_create();
     if (!file)
     {
         perror("Error opening file");
@@ -182,7 +46,8 @@ void run_first_pass(char *filename)
             continue;
         }
 
-        /* could be instruction on directive line */
+        /* inserts new label to symbol table as: clean_label | symbol_info */
+        /* moves leader token, keeps is_label_declaration flag */
         if (is_symbol_declare(leader))
         {
             is_label_declaration = 1;
@@ -208,13 +73,14 @@ void run_first_pass(char *filename)
             PRINT_TOKEN(leader);
         }
 
+        /* switch statetment type */
         statement_type = get_statement_type(leader);
         switch (statement_type)
         {
         case INSTRUCTION_STATEMENT:
         {
             EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
-            Opcode opcode = get_code(leader);
+            Opcode opcode = get_opcode(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
@@ -241,67 +107,58 @@ void run_first_pass(char *filename)
         break;
         case DIRECTIVE_STATEMENT:
         {
-            if (is_label_declaration)
-                symbol_info->type = SYMBOL_DATA;
             PRINT_DIRECTIVE(leader);
-            ASTNode *new_node;
-            int pre_inc_DC = DC;
+            int pre_inc_DC = DC; /* Save DC before increment */
+            char *label_token;
+            /* Parse directive and update DC */
+            ASTNode *node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
+            if (node->status != SUCCESS)
+                break;
 
-            new_node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
-            if (new_node->status == SUCCESS)
+            append_ast_node(&head, &tail, node); /* Add node to AST */
+
+            symbol_info->type = SYMBOL_DATA;
+            symbol_info->is_entry = -1;
+            symbol_info->is_extern = -1;
+
+            /* Handle .entry directive */
+            if (node->content.directive.type == ENTRY)
             {
-                symbol_info->type = SYMBOL_DATA;
-
-                append_ast_node(&head, &tail, new_node);
-                symbol_info->is_entry = -1;
-                symbol_info->is_extern = -1;
-                if (new_node->content.directive.type == ENTRY)
-                {
-                    symbol_info->is_entry = 1;
-                    char *label_token = tokenized_line.tokens[leader_idx + 1];
-                    clean_label = malloc(strlen(label_token + 1));
-                    strncpy(clean_label, label_token, strlen(label_token));
-                    clean_label[strlen(label_token) + 1] = '\0';
-                    int *address = malloc(sizeof(int));
-                    *address = -100;
-                    table_insert(ent_table, clean_label, address);
-                }
-                if (new_node->content.directive.type == EXTERN)
-                {
-                    symbol_info->type = SYMBOL_EXTERN;
-
-                    char *label_token = tokenized_line.tokens[leader_idx + 1];
-                    symbol_info->is_extern = 1;
-                    clean_label = malloc(strlen(label_token + 1));
-                    strncpy(clean_label, label_token, strlen(label_token));
-                    clean_label[strlen(label_token) + 1] = '\0';
-                    int *address = malloc(sizeof(int));
-                    *address = pre_inc_DC;
-                    table_insert(ext_table, clean_label, address);
-                }
-
-                if (is_label_declaration == true || symbol_info->is_extern == true)
-                {
-                    if (is_label_declaration && (symbol_info->type == ENTRY || symbol_info->type == EXTERN))
-                    {
-                        warn("entry or extern used in label declaration");
-                    }
-                    if (symbol_info->is_extern == true)
-                        symbol_info->address = 0;
-                    else
-                        symbol_info->address = pre_inc_DC;
-
-                    /* insert to table with DC before Data increment as address */
-                    if (table_insert(symbol_table, clean_label, symbol_info))
-                        PRINT_LABEL_INSERT(clean_label, pre_inc_DC);
-                    else
-                        printf("[Insert Error] Failed to insert label\n");
-                    is_label_declaration = -1;
-                }
+                /* Get the label token after directive */
+                char *token = tokenized_line.tokens[leader_idx + 1];
+                label_token = copy_label_token(token);
+                /* Add to entry table with temp -100 address */
+                symbol_info->is_entry = 1;
+                insert_entry_label(ent_table, label_token);
+            }
+            /* Handle .extern directive */
+            else if (node->content.directive.type == EXTERN)
+            {
+                /* Get the label token after directive */
+                char *token = tokenized_line.tokens[leader_idx + 1];
+                label_token = copy_label_token(token);
+                /* Add to extern table with pre_inc_dc address */
+                symbol_info->type = SYMBOL_EXTERN;
+                symbol_info->is_extern = 1;
+                insert_extern_label(ext_table, label_token, 0);
             }
 
-            /* increment data counter */
-            /* temporary, TODO token validation for each data token */
+            /* Insert label if declared or extern */
+            if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
+            {
+                if (symbol_info->type == SYMBOL_EXTERN)
+                    clean_label = label_token;
+                /* Warn if .entry or .extern used with label declaration */
+                if (is_label_declaration && (symbol_info->type == ENTRY || symbol_info->type == EXTERN))
+                    warn("entry or extern used in label declaration");
+
+                symbol_info->address = symbol_info->is_extern ? 0 : pre_inc_DC;
+
+                if (table_insert(symbol_table, clean_label, symbol_info))
+                    PRINT_LABEL_INSERT(clean_label, pre_inc_DC); /* Confirm insertion */
+                else
+                    printf("[Insert Error] Failed to insert label\n");
+            }
         }
         break;
         case INVALID_STATEMENT:
@@ -313,66 +170,22 @@ void run_first_pass(char *filename)
 
         line_number++;
     }
+
+    /* tables print */
     printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
     table_print(symbol_table, print_symbol);
     printf("\n\033[1;36mEXTERN TABLE:\033[0m\n");
     table_print(ext_table, print_extern);
     printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
-    table_print(ent_table, print_extern);
+    table_print(ent_table, print_entry);
     printf("_____________________________________\n");
 
+    /* close and release memory */
     free_ast(head);
     fclose(file);
 }
 
-DirectiveType get_directive_type(char *dir)
-{
-    if (strcmp(dir, ".data") == 0)
-        return DATA;
-    else if (strcmp(dir, ".string") == 0)
-        return STRING;
-    else if (strcmp(dir, ".mat") == 0)
-        return MAT;
-    else if (strcmp(dir, ".entry") == 0)
-        return ENTRY;
-    else if (strcmp(dir, ".extern") == 0)
-        return EXTERN;
-    else
-        return ERROR_DIRECTIVE;
-}
-
-ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx)
-{
-    /*TODO: memeset*/
-    InstructionInfo info;
-    Opcode opcode = get_code(tokenized_line.tokens[leader_idx]);
-    int expected_num_op = expect_operands(opcode);
-    info.opcode = opcode;
-    info.src_op.mode = NONE;
-    info.dest_op.mode = NONE;
-    info.status = SUCCESS;
-    printf("--> Expected operands: %d\n", expected_num_op);
-
-    switch (expected_num_op)
-    {
-    case 1:
-        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
-        info.status = parse_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
-        break;
-    case 2:
-        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
-        PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
-        info.status = parse_operand(&(info.src_op), tokenized_line, leader_idx + 1);
-        info.status = parse_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
-        break;
-    default:
-        printf("--> No operands expected.\n");
-        break;
-    }
-
-    return create_instruction_node(line_num, NULL, info);
-}
-
+/* -------------- parsers -------------- */
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr)
 {
     const char *delimeter = ",";
@@ -524,15 +337,6 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         printf("string is: %s", str_buffer);
     }
     break;
-    case ENTRY:
-    {
-        printf("entry");
-    }
-    break;
-    case EXTERN:
-    {
-    }
-    break;
     case ERROR_DIRECTIVE:
     {
     }
@@ -543,11 +347,39 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
 }
 
-/*====================================================*/
-/*                 Operand Parsing Utils              */
-/*====================================================*/
+ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx)
+{
+    /*TODO: memeset*/
+    InstructionInfo info;
+    Opcode opcode = get_opcode(tokenized_line.tokens[leader_idx]);
+    int expected_num_op = expect_operands(opcode);
+    info.opcode = opcode;
+    info.src_op.mode = NONE;
+    info.dest_op.mode = NONE;
+    info.status = SUCCESS;
+    printf("--> Expected operands: %d\n", expected_num_op);
 
-Status parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+    switch (expected_num_op)
+    {
+    case 1:
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
+        break;
+    case 2:
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
+        info.status = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
+        break;
+    default:
+        printf("--> No operands expected.\n");
+        break;
+    }
+
+    return create_instruction_node(line_num, NULL, info);
+}
+
+Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
 
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
@@ -589,6 +421,177 @@ Status parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token
     break;
     }
     return SUCCESS;
+}
+
+/* -------------- type vendors -------------- */
+StatementType get_statement_type(char *leader_token)
+{
+    if (is_instruction_line(leader_token))
+        return INSTRUCTION_STATEMENT;
+
+    else if (is_directive_line(leader_token))
+        return DIRECTIVE_STATEMENT;
+
+    else
+        return INVALID_STATEMENT;
+}
+
+DirectiveType get_directive_type(char *dir_token)
+{
+    if (strcmp(dir_token, ".data") == 0)
+        return DATA;
+    else if (strcmp(dir_token, ".string") == 0)
+        return STRING;
+    else if (strcmp(dir_token, ".mat") == 0)
+        return MAT;
+    else if (strcmp(dir_token, ".entry") == 0)
+        return ENTRY;
+    else if (strcmp(dir_token, ".extern") == 0)
+        return EXTERN;
+    else
+        return ERROR_DIRECTIVE;
+}
+
+Opcode get_opcode(char *opcode_token)
+{
+
+    PRINT_DEBUG("getting opcode\n");
+    int res;
+    if (strcmp(opcode_token, "mov") == 0)
+        return 0;
+    if (strcmp(opcode_token, "cmp") == 0)
+        return 1;
+    if (strcmp(opcode_token, "add") == 0)
+        return 2;
+    if (strcmp(opcode_token, "sub") == 0)
+        return 3;
+    if (strcmp(opcode_token, "lea") == 0)
+        return 4;
+    if (strcmp(opcode_token, "clr") == 0)
+        return 5;
+    if (strcmp(opcode_token, "not") == 0)
+        return 6;
+    if (strcmp(opcode_token, "inc") == 0)
+        return 7;
+    if (strcmp(opcode_token, "dec") == 0)
+        return 8;
+    if (strcmp(opcode_token, "jmp") == 0)
+        return 9;
+    if (strcmp(opcode_token, "bne") == 0)
+        return 10;
+    if (strcmp(opcode_token, "red") == 0)
+        return 11;
+    if (strcmp(opcode_token, "prn") == 0)
+        return 12;
+    if (strcmp(opcode_token, "jsr") == 0)
+        return 13;
+    if (strcmp(opcode_token, "rts") == 0)
+        return 14;
+    if (strcmp(opcode_token, "stop") == 0)
+        return 15;
+    return -1;
+}
+
+/* -------------- statement recognition -------------- */
+int is_directive_line(char *leader)
+{
+    char dir_prefix;
+    char *dir_name;
+
+    if (leader == NULL || strlen(leader) < 2)
+    {
+        return false;
+    }
+
+    dir_prefix = leader[0];
+    dir_name = &leader[1];
+
+    if (dir_prefix != '.')
+        return false;
+
+    return is_valid_directive_name(leader);
+}
+
+int is_instruction_line(char *leader)
+{
+    Opcode opcode = get_opcode(leader);   /* get_code אמור להחזיר -1 אם לא חוקי */
+    return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
+}
+
+int is_comment_line(char *line)
+{
+    const char *trimmed;
+    if (!line)
+        return 0;
+    trimmed = trim_whitespace(line);
+    return trimmed[0] == ';';
+}
+
+int is_empty_line(Tokens tokens)
+{
+    const char *trimmed;
+    if (tokens.count == 0)
+        return 1;
+
+    trimmed = trim_whitespace(tokens.tokens[0]);
+    return trimmed[0] == '\0';
+}
+
+int is_symbol_declare(char *token)
+{
+    int len = strlen(token);
+    return (is_valid_label_name(token) && token[len - 1] == ':');
+}
+
+/* -------------- validators -------------- */
+int is_valid_label_name(char *token)
+{
+    int i;
+    int len;
+
+    if (!token)
+    {
+        /* handle error*/
+        return false;
+    }
+
+    len = strlen(token);
+
+    if (len == 0 || len > 31)
+    {
+        return false;
+        /* handle error*/
+    }
+
+    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
+          (token[0] >= 'a' && token[0] <= 'z')))
+    {
+        return false;
+        /* handle error */
+    }
+
+    for (i = 1; i < len - 1; i++)
+    {
+        if (!((token[i] >= 'A' && token[i] <= 'Z') ||
+              (token[i] >= 'a' && token[i] <= 'z') ||
+              (token[i] >= '0' && token[i] <= '9')))
+        {
+            return false;
+            /*handle error */
+        }
+    }
+
+    return true;
+}
+
+int is_valid_directive_name(char *directive)
+{
+    char *dir_name = directive + 1;
+    return (strcmp(dir_name, "data") == 0 ||
+            strcmp(dir_name, "string") == 0 ||
+            strcmp(dir_name, "mat") == 0 ||
+            strcmp(dir_name, "entry") == 0 ||
+            strcmp(dir_name, "extern") == 0);
 }
 
 int is_valid_number_operand(char *value)
@@ -674,6 +677,8 @@ int is_valid_register(char *value)
            value[2] == '\0';
 }
 
+/* -------------- ....... -------------- */
+
 const char *addressing_mode_name(AddressingMode mode)
 {
     switch (mode)
@@ -693,150 +698,38 @@ const char *addressing_mode_name(AddressingMode mode)
     }
 }
 
-/*====================================================*/
-/*                Label & Directive Utils             */
-/*====================================================*/
-
-int is_symbol_declare(char *token)
+char *copy_label_token(char *token)
 {
-    int len = strlen(token);
-    return (is_valid_label_name(token) && token[len - 1] == ':');
+    char *copy = malloc(strlen(token) + 1);
+    strcpy(copy, token);
+    return copy;
 }
 
-int is_valid_label_name(char *token)
+void insert_entry_label(Table *ent_table, char *label)
 {
-    int i;
-    int len;
+    int *addr = malloc(sizeof(int));
+    *addr = -100;
+    table_insert(ent_table, label, addr);
+}
 
-    if (!token)
+void insert_extern_label(Table *ext_table, char *label, int address)
+{
+    int *addr = malloc(sizeof(int));
+    *addr = address;
+    table_insert(ext_table, label, addr);
+}
+
+void set_directive_flags(ASTNode *node, SymbolInfo *info)
+{
+    info->type = SYMBOL_DATA;
+    info->is_entry = -1;
+    info->is_extern = -1;
+
+    if (node->content.directive.type == ENTRY)
+        info->is_entry = 1;
+    if (node->content.directive.type == EXTERN)
     {
-        /* handle error*/
-        return false;
+        info->type = SYMBOL_EXTERN;
+        info->is_extern = 1;
     }
-
-    len = strlen(token);
-
-    if (len == 0 || len > 31)
-    {
-        return false;
-        /* handle error*/
-    }
-
-    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
-          (token[0] >= 'a' && token[0] <= 'z')))
-    {
-        return false;
-        /* handle error */
-    }
-
-    for (i = 1; i < len - 1; i++)
-    {
-        if (!((token[i] >= 'A' && token[i] <= 'Z') ||
-              (token[i] >= 'a' && token[i] <= 'z') ||
-              (token[i] >= '0' && token[i] <= '9')))
-        {
-            return false;
-            /*handle error */
-        }
-    }
-
-    return true;
-}
-
-int is_instruction_line(char *leader)
-{
-    Opcode opcode = get_code(leader);     /* get_code אמור להחזיר -1 אם לא חוקי */
-    return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
-}
-
-Opcode get_code(char *str)
-{
-
-    PRINT_DEBUG("getting opcode\n");
-    int res;
-    if (strcmp(str, "mov") == 0)
-        return 0;
-    if (strcmp(str, "cmp") == 0)
-        return 1;
-    if (strcmp(str, "add") == 0)
-        return 2;
-    if (strcmp(str, "sub") == 0)
-        return 3;
-    if (strcmp(str, "lea") == 0)
-        return 4;
-    if (strcmp(str, "clr") == 0)
-        return 5;
-    if (strcmp(str, "not") == 0)
-        return 6;
-    if (strcmp(str, "inc") == 0)
-        return 7;
-    if (strcmp(str, "dec") == 0)
-        return 8;
-    if (strcmp(str, "jmp") == 0)
-        return 9;
-    if (strcmp(str, "bne") == 0)
-        return 10;
-    if (strcmp(str, "red") == 0)
-        return 11;
-    if (strcmp(str, "prn") == 0)
-        return 12;
-    if (strcmp(str, "jsr") == 0)
-        return 13;
-    if (strcmp(str, "rts") == 0)
-        return 14;
-    if (strcmp(str, "stop") == 0)
-        return 15;
-    return -1;
-}
-
-int is_directive_line(char *leader)
-{
-    char dir_prefix;
-    char *dir_name;
-
-    if (leader == NULL || strlen(leader) < 2)
-    {
-        return false;
-    }
-
-    dir_prefix = leader[0];
-    dir_name = &leader[1];
-
-    if (dir_prefix != '.')
-        return false;
-
-    return is_valid_directive_name(leader);
-}
-
-int is_valid_directive_name(char *directive)
-{
-    char *dir_name = directive + 1;
-    return (strcmp(dir_name, "data") == 0 ||
-            strcmp(dir_name, "string") == 0 ||
-            strcmp(dir_name, "mat") == 0 ||
-            strcmp(dir_name, "entry") == 0 ||
-            strcmp(dir_name, "extern") == 0);
-}
-
-/*====================================================*/
-/*                  Miscellaneous Utils               */
-/*====================================================*/
-
-int is_comment_line(char *line)
-{
-    const char *trimmed;
-    if (!line)
-        return 0;
-    trimmed = trim_whitespace(line);
-    return trimmed[0] == ';';
-}
-
-int is_empty_line(Tokens tokens)
-{
-    const char *trimmed;
-    if (tokens.count == 0)
-        return 1;
-
-    trimmed = trim_whitespace(tokens.tokens[0]);
-    return trimmed[0] == '\0';
 }
