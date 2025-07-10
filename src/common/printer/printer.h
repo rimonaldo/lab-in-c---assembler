@@ -30,12 +30,13 @@
 #define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 #define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
-#define PRINT_ERR(e)                                                    \
-    do                                                                  \
-    {                                                                   \
-        const ErrorLog *err = get_error_log((e).code);                  \
-        fprintf(stderr, "\033[1;31m[ERROR]\033[0m Line %d: %s\n",       \
-                (e).line_number, err ? err->message : "Unknown error"); \
+
+#define PRINT_ERR(e)                                                \
+    do                                                              \
+    {                                                               \
+        fprintf(stderr, "  \033[1;31mERROR\033[0m Line %d: %s\n", \
+                (e).line_number,                                    \
+                (e).message ? (e).message : "Unknown error");       \
     } while (0)
 
 void print_symbol(const char *key, void *data);
