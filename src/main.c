@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "common/errors/errors.h"
 #include "stg_00_preprocessor/preprocessor.h"
 #include "stg_01_first_pass/first_pass.h"
 
@@ -16,6 +17,8 @@ int main(int argc, char *argv[])
 
     /* Get pointer to input filename from command-line argument */
     const char *input_filename = argv[1];
+
+    StatusInfo *status_info = malloc(sizeof(StatusInfo));
 
     /*
      * Extract the basename of the file (without path):
@@ -36,10 +39,10 @@ int main(int argc, char *argv[])
     generate_expanded_filename(expanded_filename, sizeof(expanded_filename), basename);
 
     /* Run the pre-assembler on the original source file */
-    run_pre_assembler(input_filename);
+    run_pre_assembler(input_filename, status_info);
 
     /* Run the first pass on the preprocessed (".am") file */
-    run_first_pass(expanded_filename);
+    run_first_pass(expanded_filename, status_info);
 
     /* Return success */
     return 0;

@@ -52,3 +52,7 @@ WRONG: mov A
 mcro DOUBLE
     add r1, r1
 mcroend
+
+mov  A, r1 add  B, r1
+
+LABEL:   mov  A, r1

@@ -70,7 +70,7 @@ int macro_exists(const MacroTable *table, const char *name)
     Main Pre-Assembler API
 --------------------------*/
 
-int run_pre_assembler(const char *input_path)
+int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 {
     char line[MAX_LINE_LEN];
     char macro_name_buffer[MAX_LINE_LEN];

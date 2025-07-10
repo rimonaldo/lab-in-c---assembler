@@ -5,7 +5,6 @@ typedef enum
 {
     SEV_ERROR,
     SEV_WARNING,
-    SEV_CRITICAL
 } Severity;
 
 typedef enum
@@ -53,16 +52,22 @@ typedef enum
     MEM_W201_UNSD
 } ErrorCode;
 
-
 typedef struct
 {
     ErrorCode code;
     const char *message;
     int line_number;
+    Severity sevirity;
+} ErrorInfo;
 
-} ErrorLog;
+typedef struct
+{
+    ErrorInfo *error_log; /* מערך דינאמי */
+    int error_count;      /* כמה שגיאות קיימות כרגע */
+    int capacity;         /* כמה מוקצה כרגע בזיכרון */
+} StatusInfo;
 
 /* Returns pointer to ErrorInfo for given error code */
-const ErrorLog *get_error_log(ErrorCode code);
+const ErrorInfo *get_error_log(ErrorCode code);
 
 #endif

@@ -7,7 +7,7 @@ char *my_strdup(const char *s);
 char *trim_whitespace(char *str);
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename)
+void run_first_pass(char *filename, StatusInfo *status_info)
 {
     int is_label_declaration = 0;
     int IC = 0, DC = 0;
@@ -19,6 +19,7 @@ void run_first_pass(char *filename)
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
     char *clean_label;
+    
     if (!file)
     {
         perror("Error opening file");
@@ -84,6 +85,7 @@ void run_first_pass(char *filename)
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
+            if(!new_node) break;
             append_ast_node(&head, &tail, new_node);
 
             if (new_node->status != ERR1)
@@ -152,7 +154,7 @@ void run_first_pass(char *filename)
                 if (is_label_declaration && (symbol_info->type == ENTRY || symbol_info->type == EXTERN))
                     warn("entry or extern used in label declaration");
 
-                symbol_info->address = symbol_info->is_extern ? 0 : pre_inc_DC;
+                symbol_info->address = symbol_info->is_extern > 0 ? 0 : pre_inc_DC;
 
                 if (table_insert(symbol_table, clean_label, symbol_info))
                     PRINT_LABEL_INSERT(clean_label, pre_inc_DC); /* Confirm insertion */
@@ -358,7 +360,12 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
     info.dest_op.mode = NONE;
     info.status = SUCCESS;
     printf("--> Expected operands: %d\n", expected_num_op);
-
+    int operands_count = tokenized_line.count - (leader_idx + 2);
+    if (expected_num_op != operands_count)
+    {
+        /* handle error - wrong amount of operands (too few or too many)*/
+        return NULL;
+    }
     switch (expected_num_op)
     {
     case 1:

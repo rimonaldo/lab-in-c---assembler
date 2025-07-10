@@ -9,6 +9,8 @@
 #include "../common/encoding/encoding.h"
 #include "../common/utils/utils.h"
 #include "../common/printer/printer.h"
+#include "../common/errors/errors.h"
+
 typedef enum
 {
     SYMBOL_DATA,
@@ -25,7 +27,7 @@ typedef struct SymbolInfo
     int is_extern
 } SymbolInfo;
 
-void run_first_pass(char *filename);
+void run_first_pass(char *filename, StatusInfo *status_info);
 ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr);
 int is_symbol_declare(char *token);
