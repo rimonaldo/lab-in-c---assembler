@@ -11,7 +11,7 @@ typedef enum
 typedef enum
 {
     /* Syntax Errors (Critical - halt assembly) */
-    E001 = 1,
+    E001 = 501,
     E002,
     E003,
     E004,
@@ -47,20 +47,22 @@ typedef enum
     W008,
 
     /* Memory Errors (Assembly stops if violated) */
-    MEM_E201 = 301,
-    MEM_E202,
-    MEM_E203,
-    MEM_W201
+    MEM_E201_WRD_LIM = 301,
+    MEM_E202_LN_LIM,
+    MEM_E203_SO_RSK,
+    MEM_W201_UNSD
 } ErrorCode;
+
 
 typedef struct
 {
     ErrorCode code;
     const char *message;
-    Severity severity;
-} ErrorInfo;
+    int line_number;
+
+} ErrorLog;
 
 /* Returns pointer to ErrorInfo for given error code */
-const ErrorInfo *get_error_info(ErrorCode code);
+const ErrorLog *get_error_log(ErrorCode code);
 
-#endif 
+#endif
