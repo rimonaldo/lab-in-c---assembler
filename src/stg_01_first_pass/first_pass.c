@@ -19,7 +19,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
     char *clean_label;
-
+    ErrorInfo err;
     if (!file)
     {
         perror("Error opening file");
@@ -32,11 +32,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
         if (strlen(line) > MAX_LINE_LEN)
-        {
-            ErrorInfo err = write_error_log(status_info, MEM_E202_LN_LIM, line_number);
-            PRINT_ERR(err);
-
-        }
+            write_error_log(status_info, E701_MEMORY_LINE_CHAR_LIMIT, line_number);
 
         tokenized_line = tokenize_line(line);
         int leader_idx = 0;
@@ -60,19 +56,17 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             is_label_declaration = 1;
             PRINT_LABEL_FOUND(leader);
             int is_declared = table_lookup(symbol_table, leader);
-            /* if not declared before add to table */
-            if (!is_declared)
+
+            if (is_declared)
+                /*ERROR - LABEL_REDEFINED*/
+                write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
+            else
             {
                 clean_label = malloc(strlen(leader));
                 strncpy(clean_label, leader, strlen(leader) - 1);
                 clean_label[strlen(leader) - 1] = '\0';
 
                 *symbol_info->name = clean_label;
-            }
-            else
-            {
-                /* else, handle error */
-                PRINT_LABEL_EXISTS(leader);
             }
 
             /* move leader to next token */

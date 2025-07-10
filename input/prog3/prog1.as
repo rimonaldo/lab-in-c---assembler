@@ -32,7 +32,7 @@ RESULT:  .data 0
 MATRIX1: .mat [3]
 
 ; Matrix INIT Example (initialize rest of values to 0)
-MATRIX2: .mat [3][2] 1, 2, 3
+MATRIX2: .mat [3][2] 1.5, 2, 3
 
 ; String Example (unused)
 MSG:     .string "Done"
@@ -55,3 +55,4 @@ mcroend
 
 mov  A, r1 add  B, r1
 
+LABEL:   mov  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, r1
