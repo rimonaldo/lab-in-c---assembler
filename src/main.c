@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
     const char *input_filename = argv[1];
 
     StatusInfo *status_info = malloc(sizeof(StatusInfo));
-
+    status_info->error_log = malloc(sizeof(ErrorInfo) * 10);
+    status_info->capacity = 10;
     /*
      * Extract the basename of the file (without path):
      * If input is "path/to/file.asm", we want just "file.asm"
@@ -41,9 +42,22 @@ int main(int argc, char *argv[])
     /* Run the pre-assembler on the original source file */
     run_pre_assembler(input_filename, status_info);
 
+    if (status_info->error_count > 0)
+    {
+        printf("Did not pass preprocessor stage\n");
+        return 0;
+    }
+
     /* Run the first pass on the preprocessed (".am") file */
     run_first_pass(expanded_filename, status_info);
 
+    if (status_info->error_count > 0)
+    {
+        printf("Did not pass first_pass stage\n");
+        return 0;
+    }
+
+    printf("------------Starting 2nd pass------------\n");
     /* Return success */
     return 0;
 }
