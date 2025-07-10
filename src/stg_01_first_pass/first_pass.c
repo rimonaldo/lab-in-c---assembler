@@ -19,7 +19,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     char *leader;
     ASTNode *head = NULL, *tail = NULL;
     char *clean_label;
-    
+
     if (!file)
     {
         perror("Error opening file");
@@ -31,6 +31,12 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     {
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
+        if (strlen(line) > MAX_LINE_LEN)
+        {
+            ErrorInfo err = write_error_log(status_info, MEM_E202_LN_LIM, line_number);
+            PRINT_ERR(err);
+
+        }
 
         tokenized_line = tokenize_line(line);
         int leader_idx = 0;
@@ -85,7 +91,8 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
-            if(!new_node) break;
+            if (!new_node)
+                break;
             append_ast_node(&head, &tail, new_node);
 
             if (new_node->status != ERR1)
