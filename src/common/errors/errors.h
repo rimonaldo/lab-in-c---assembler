@@ -9,47 +9,50 @@ typedef enum
 
 typedef enum
 {
-    /* Syntax Errors (Critical - halt assembly) */
-    E001 = 501,
-    E002,
-    E003,
-    E004,
-    E005,
-    E006,
-    E007,
-    E008,
-    E009,
-    E010,
+    /* ────────────────[ 000–099: Macro Errors & Warnings ]──────────────── */
+    E001_MACRO_UNDEFINED = 0, /* Macro invoked before defined */
+    E002_MACRO_NESTED,        /* Nested mcro ... mcroend block */
+    W003_MACRO_REDEFINED,     /* Macro defined more than once */
+    W004_MACRO_EMPTY,         /* Empty macro body */
 
-    /* Semantic Errors (Critical - halt assembly) */
-    E101 = 101,
-    E102,
-    E103,
-    E104,
-    E105,
-    E106,
-    E107,
-    E108,
-    E109,
-    E110,
-    E111,
-    E112,
+    /* ────────────────[ 500–599: Label Errors & Warnings ]─────────────── */
+    E500_LABEL_INVALID = 500,      /* Invalid label format */
+    E501_LABEL_RESERVED,           /* Label is reserved keyword */
+    E502_LABEL_REDEFINED,          /* Duplicate label in same file */
+    E503_LABEL_UNDEFINED,          /* Label used but never defined */
+    E504_LABEL_FORWARD_UNDEFINED,  /* Label referenced before definition and never resolved */
+    E505_LABEL_ENTRY_NOT_FOUND,    /* .entry label not defined in file */
+    E506_LABEL_ENTRY_AND_EXTERN,   /* Label declared as both .entry and .extern */
+    W507_LABEL_ON_ENTRY_OR_EXTERN, /* Label before .entry/.extern directive */
+    W508_LABEL_UNUSED,             /* Label defined but never used */
 
-    /* Warnings (Non-critical - allow assembly) */
-    W001 = 201,
-    W002,
-    W003,
-    W004,
-    W005,
-    W006,
-    W007,
-    W008,
+    /* ────────────────[ 600–699: Instruction & Operand Errors ]────────── */
+    E600_INSTRUCTION_NAME_INVALID = 600,      /* Unrecognized instruction name */
+    E601_INSTRUCTION_FORMAT_INVALID,          /* Too many/few operands */
+    E602_INSTRUCTION_TRAILING_CHARS,          /* Extra characters after instruction */
+    E603_INSTRUCTION_ADDRESSING_MODE_INVALID, /* Invalid addressing mode */
 
-    /* Memory Errors (Assembly stops if violated) */
-    MEM_E201_WRD_LIM = 301,
-    MEM_E202_LINE_CHAR_LIMIT,
-    MEM_E203_SO_RSK,
-    MEM_W201_UNSD
+    /* Immediate operand errors */
+    E610_OPERAND_IMMEDIATE_INVALID = 610, /* Bad immediate syntax */
+    E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS, /* Immediate value out of range */
+    E612_OPERAND_IMMEDIATE_FLOAT,         /* Immediate value must be integer */
+
+    /* Register operand errors */
+    E613_OPERAND_REGISTER_INVALID,       /* Bad register name */
+    E614_OPERAND_REGISTER_OUT_OF_BOUNDS, /* Register must be r0–r7 */
+
+    /* Matrix operand errors */
+    E615_OPERAND_MAT_INDEX_INVALID,       /* Matrix index not [rX][rY] */
+    E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS, /* Matrix index out of bounds */
+    W617_OPERAND_MAT_INITIALIZED_UNDER,   /* Not enough matrix initializers */
+    W618_OPERAND_MAT_INITIALIZED_OVER,    /* Too many matrix initializers */
+
+    /* ────────────────[ 700–799: Memory Errors & Warnings ]────────────── */
+    E700_MEMORY_PROGRAM_WORD_LIMIT = 700, /* Program exceeds machine memory (e.g., 256 words) */
+    E701_MEMORY_LINE_CHAR_LIMIT,          /* Source line exceeds 80 characters */
+    E702_MEMORY_STACK_OVERFLOW_RISK,      /* Stack overflow risk detected */
+    W703_MEMORY_UNUSED_DATA               /* Unused .data/.mat values (extra initializers) */
+
 } ErrorCode;
 
 typedef struct
@@ -74,46 +77,3 @@ const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int lin
 void free_status_info(StatusInfo *status_info);
 
 #endif
-
-typedef enum
-{
-    /* Label Errors */
-    E501_LABEL_INVALID = 501,
-    E502_LABEL_RESERVED,
-    E503_LABEL_REDEFINED,
-    E504_LABEL_UNDEFINED,
-    E505_LABEL_FORWARD_UNDEFINED,
-    E506_LABEL__ENTRY_NOT_FOUND,
-    E507_LABEL_ENTRY_AND_EXTERN,
-    W508_LABEL_OR_ENTRY_OR_EXTERN,
-
-    /* Semantic Errors (Critical - halt assembly) */
-    E101 = 101,
-    E102,
-    E103,
-    E104,
-    E105,
-    E106,
-    E107,
-    E108,
-    E109,
-    E110,
-    E111,
-    E112,
-
-    /* Warnings (Non-critical - allow assembly) */
-    W001 = 201,
-    W002,
-    W003,
-    W004,
-    W005,
-    W006,
-    W007,
-    W008,
-
-    /* Memory Errors (Assembly stops if violated) */
-    MEM_E201_WRD_LIM = 301,
-    MEM_E202_LINE_CHAR_LIMIT,
-    MEM_E203_SO_RSK,
-    MEM_W201_UNSD
-} ErrorCode2;
