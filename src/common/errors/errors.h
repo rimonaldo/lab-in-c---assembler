@@ -70,4 +70,7 @@ typedef struct
 /* Returns pointer to ErrorInfo for given error code */
 const ErrorInfo *get_error_log(ErrorCode code);
 
+const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number);
+void free_status_info(StatusInfo *status_info);
+
 #endif

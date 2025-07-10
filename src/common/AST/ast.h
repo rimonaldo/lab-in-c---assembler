@@ -5,6 +5,8 @@
   Type Definitions (Enums)
 ===============================*/
 
+#define MAX_LINE_LEN 82
+
 typedef enum
 {
     SUCCESS = 500,
