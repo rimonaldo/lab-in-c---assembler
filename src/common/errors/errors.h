@@ -31,16 +31,13 @@ typedef enum
     E601_INSTRUCTION_FORMAT_INVALID,          /* Too many/few operands */
     E602_INSTRUCTION_TRAILING_CHARS,          /* Extra characters after instruction */
     E603_INSTRUCTION_ADDRESSING_MODE_INVALID, /* Invalid addressing mode */
-
     /* Immediate operand errors */
     E610_OPERAND_IMMEDIATE_INVALID = 610, /* Bad immediate syntax */
     E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS, /* Immediate value out of range */
     E612_OPERAND_IMMEDIATE_FLOAT,         /* Immediate value must be integer */
-
     /* Register operand errors */
     E613_OPERAND_REGISTER_INVALID,       /* Bad register name */
     E614_OPERAND_REGISTER_OUT_OF_BOUNDS, /* Register must be r0–r7 */
-
     /* Matrix operand errors */
     E615_OPERAND_MAT_INDEX_INVALID,       /* Matrix index not [rX][rY] */
     E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS, /* Matrix index out of bounds */

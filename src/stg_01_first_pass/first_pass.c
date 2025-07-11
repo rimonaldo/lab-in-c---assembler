@@ -58,7 +58,6 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             int is_declared = table_lookup(symbol_table, leader);
 
             if (is_declared)
-                /*ERROR - LABEL_REDEFINED*/
                 write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
             else
             {

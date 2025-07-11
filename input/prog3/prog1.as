@@ -1,58 +1,45 @@
-; Sample Assembly Program for the Imaginary Computer
-; Computes: result = (A + B) * 2 and prints result as ASCII
+; Macro definitions
 
-.extern PRINT_CHAR
-
-
-
-
-CODE:    mov  A, r1
-         add  B, r1
-         bne  MAIN
-
-
-MAIN:    mov  A, r1
-         add  B, r1
-         mov  r1, r2
-         add  r2, r1
-         mov  r1, RESULT
-         lea  RESULT, r3
-         jsr  PRINT_CHAR
-         stop
-
-; Subroutine defined in external file
-.entry MAIN
-; data ERROR example (missing values)
-A:       .data 4, 2, 6, ,,, 12
-; Data Section
-B:       .data 3
-RESULT:  .data 0
-
-; Matrix ERROR Example (missing row or col size)
-MATRIX1: .mat [3]
-
-; Matrix INIT Example (initialize rest of values to 0)
-MATRIX2: .mat [3][2] 1.5, 2, 3
-
-; String Example (unused)
-MSG:     .string "Done"
-
-MAIN2:    mov  A, r1
-         add  B, r1
-         mov  r1, r2
-         add  r2, r1
-         mov  r1, RESULT
-         lea  RESULT, r3
-         jsr  PRINT_CHAR
-         stop
-
-WRONG: mov A
-
-; Macro Example
-mcro DOUBLE
-    add r1, r1
+mcro INIT_REGS
+    mov r0, #1
+    mov r1, #2
+    mov r2, #3
 mcroend
 
-mov  A, r1 add  B, r1
+mcro CLEAR_FLAGS
+    clr flag1
+    clr flag2
+mcroend
 
-LABEL:   mov  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, r1
+mcro EMPTY_MACRO
+mcroend
+
+mcro JUMP_TO_END
+    jmp END
+mcroend
+
+; Program start
+
+start:
+    ; Initialize registers
+    INIT_REGS
+
+    ; Clear flags
+    CLEAR_FLAGS
+
+    ; Call empty macro - should produce no output
+    EMPTY_MACRO
+
+    ; Normal instructions
+    mov r3, r4
+    add r3, r5
+
+    ; Jump to end
+    JUMP_TO_END
+
+    ; These instructions should be skipped by jump
+    sub r5, r6
+    mov r7, r5
+
+END:
+    stop
