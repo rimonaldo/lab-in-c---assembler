@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     /* Run the pre-assembler on the original source file */
     run_pre_assembler(input_filename, status_info);
 
+    print_errors(status_info);
     if (status_info->error_count > 0)
     {
         printf("Did not pass preprocessor stage\n");

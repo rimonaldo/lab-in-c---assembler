@@ -7,10 +7,11 @@
 static const ErrorInfo error_table[] = {
 
     /* ──────── Macro Errors & Warnings ──────── */
-    {E001_MACRO_UNDEFINED, "Macro used before it was defined", UNINIT_LINE_NUM},
-    {E002_MACRO_NESTED, "Nested macro definitions are not allowed", UNINIT_LINE_NUM},
-    {W003_MACRO_REDEFINED, "Macro redefined with the same name", UNINIT_LINE_NUM},
-    {W004_MACRO_EMPTY, "Empty macro definition (mcro ... mcroend with no content)", UNINIT_LINE_NUM},
+    {E400_MACRO_UNDEFINED, "Macro used before it was defined", UNINIT_LINE_NUM},
+    {E401_MACRO_NESTED, "Nested macro definitions are not allowed", UNINIT_LINE_NUM},
+    {W402_MACRO_UNNAMED, "Macro unnamed definition ", UNINIT_LINE_NUM, SEV_WARNING},
+    {W403_MACRO_REDEFINED, "Macro redefined with the same name", UNINIT_LINE_NUM, SEV_WARNING},
+    {W404_MACRO_EMPTY, "Empty macro definition (mcro ... mcroend with no content)", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Label Errors & Warnings ──────── */
     {E500_LABEL_INVALID, "Invalid label format (must start with a letter, be alphanumeric, max 31 chars)", UNINIT_LINE_NUM},
@@ -20,8 +21,8 @@ static const ErrorInfo error_table[] = {
     {E504_LABEL_FORWARD_UNDEFINED, "Forward-referenced label was never defined", UNINIT_LINE_NUM},
     {E505_LABEL_ENTRY_NOT_FOUND, ".entry label is not defined within the file", UNINIT_LINE_NUM},
     {E506_LABEL_ENTRY_AND_EXTERN, "Label declared as both .entry and .extern", UNINIT_LINE_NUM},
-    {W507_LABEL_ON_ENTRY_OR_EXTERN, "Label defined on a line with .entry/.extern (ignored)", UNINIT_LINE_NUM},
-    {W508_LABEL_UNUSED, "Label defined but never used", UNINIT_LINE_NUM},
+    {W507_LABEL_ON_ENTRY_OR_EXTERN, "Label defined on a line with .entry/.extern (ignored)", UNINIT_LINE_NUM, SEV_WARNING},
+    {W508_LABEL_UNUSED, "Label defined but never used", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Instruction & Operand Errors ──────── */
     {E600_INSTRUCTION_NAME_INVALID, "Invalid instruction mnemonic", UNINIT_LINE_NUM},
@@ -38,14 +39,14 @@ static const ErrorInfo error_table[] = {
 
     {E615_OPERAND_MAT_INDEX_INVALID, "Invalid matrix index format (should be [rX][rY])", UNINIT_LINE_NUM},
     {E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS, "Matrix indices must use valid registers (r0–r7)", UNINIT_LINE_NUM},
-    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size", UNINIT_LINE_NUM},
-    {W618_OPERAND_MAT_INITIALIZED_OVER, "Too many matrix initializers for defined size", UNINIT_LINE_NUM},
+    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
+    {W618_OPERAND_MAT_INITIALIZED_OVER, "Too many matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Memory Errors & Warnings ──────── */
     {E700_MEMORY_PROGRAM_WORD_LIMIT, "Program exceeds machine memory limit (e.g., 256 words)", UNINIT_LINE_NUM},
     {E701_MEMORY_LINE_CHAR_LIMIT, "Line exceeds 80-character limit", UNINIT_LINE_NUM},
     {E702_MEMORY_STACK_OVERFLOW_RISK, "Stack overflow risk detected (e.g., many JSRs without RTS)", UNINIT_LINE_NUM},
-    {W703_MEMORY_UNUSED_DATA, "Unused .data or .mat values (more initializers than needed)", UNINIT_LINE_NUM},
+    {W703_MEMORY_UNUSED_DATA, "Unused .data or .mat values (more initializers than needed)", UNINIT_LINE_NUM, SEV_WARNING},
 };
 
 #define ERROR_TABLE_SIZE (sizeof(error_table) / sizeof(ErrorInfo))
@@ -63,9 +64,26 @@ const ErrorInfo *get_error_log(ErrorCode code)
     return (const ErrorInfo *)0; /* NULL */
 }
 
+void print_errors(StatusInfo *status_info)
+{
+    int i;
+    if (!status_info || !status_info->error_log)
+        return;
+
+    for (i = 0; i < status_info->error_count; i++)
+    {
+        ErrorInfo *err = &status_info->error_log[i];
+        const char *sev_str = (err->sevirity == SEV_ERROR) ? "Error" : "Warning";
+
+        if (err->line_number >= 0)
+            printf("[%s] Line %d: %s (Code: %d)\n", sev_str, err->line_number, err->message, err->code);
+        else
+            printf("[%s] %s (Code: %d)\n", sev_str, err->message, err->code);
+    }
+}
+
 const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number)
 {
-
     /* dynamicaly increase error log memory space when needed */
     if (status_info->error_count >= status_info->capacity)
     {
@@ -85,11 +103,16 @@ const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int lin
         .code = code,
         .line_number = line_number,
         .message = get_error_log(code)->message,
-        .sevirity = SEV_ERROR};
+        .sevirity = get_error_log(code)->sevirity};
 
-    status_info->error_log[status_info->error_count++] = new_err;
-
-    PRINT_ERR(new_err);
+    status_info->error_log[status_info->error_count] = new_err;
+    if (new_err.sevirity == SEV_WARNING)
+        PRINT_WRN(new_err);
+    else
+    {
+        PRINT_ERR(new_err);
+        status_info->error_count++;
+    }
     return new_err;
 }
 

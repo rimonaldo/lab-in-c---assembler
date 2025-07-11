@@ -4,16 +4,17 @@
 typedef enum
 {
     SEV_ERROR,
-    SEV_WARNING,
+    SEV_WARNING
 } Severity;
 
 typedef enum
 {
-    /* ────────────────[ 000–099: Macro Errors & Warnings ]──────────────── */
-    E001_MACRO_UNDEFINED = 0, /* Macro invoked before defined */
-    E002_MACRO_NESTED,        /* Nested mcro ... mcroend block */
-    W003_MACRO_REDEFINED,     /* Macro defined more than once */
-    W004_MACRO_EMPTY,         /* Empty macro body */
+    /* ────────────────[ 400–499: Macro Errors & Warnings ]──────────────── */
+    E400_MACRO_UNDEFINED = 400, /* Macro invoked before defined */
+    E401_MACRO_NESTED,          /* Nested mcro ... mcroend block */
+    W402_MACRO_UNNAMED,         /* Macro name not defined. e.g: mcro mcroend  */
+    W403_MACRO_REDEFINED,       /* Macro defined more than once, last macro will overide */
+    W404_MACRO_EMPTY,           /* Empty macro body */
 
     /* ────────────────[ 500–599: Label Errors & Warnings ]─────────────── */
     E500_LABEL_INVALID = 500,      /* Invalid label format */
@@ -71,6 +72,9 @@ typedef struct
 const ErrorInfo *get_error_log(ErrorCode code);
 
 const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number);
+
 void free_status_info(StatusInfo *status_info);
+
+void print_errors(StatusInfo *status_info);
 
 #endif
