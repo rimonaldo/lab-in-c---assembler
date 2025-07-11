@@ -31,14 +31,21 @@
 #define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
 #define PRINT_DC(dc) printf("  \033[1;36mData Counter :\033[0m %d\n", dc)
 
-#define PRINT_ERR(e)                                                \
-    do                                                              \
-    {                                                               \
+#define PRINT_ERR(e)                                              \
+    do                                                            \
+    {                                                             \
         fprintf(stderr, "  \033[1;31mERROR\033[0m Line %d: %s\n", \
-                (e).line_number,                                    \
-                (e).message ? (e).message : "Unknown error");       \
+                (e).line_number,                                  \
+                (e).message ? (e).message : "Unknown error");     \
     } while (0)
 
+#define PRINT_WRN(e)                                                \
+    do                                                              \
+    {                                                               \
+        fprintf(stderr, "  \033[1;33mWARNING\033[0m Line %d: %s\n", \
+                (e).line_number,                                    \
+                (e).message ? (e).message : "Unknown warning");     \
+    } while (0)
 void print_symbol(const char *key, void *data);
 void print_extern(const char *key, void *data);
 void print_entry(const char *key, void *data);
