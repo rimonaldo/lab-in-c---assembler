@@ -6,6 +6,7 @@
 #include "macro_table.h"
 #include "../common/tokenizer/tokenizer.h"
 #include "../common/utils/file_utils.h"
+#include "../common/errors/errors.h"
 
 /*-----------------------------------------------------------
     Macro expansion pre-assembler module
@@ -16,7 +17,6 @@
     Constants and Globals
 --------------------------*/
 
-#define MAX_LINE_LEN 82
 #define MAX_MACRO_LINES 100
 
 /* Used to store the macro currently found (optional global) */
@@ -74,7 +74,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 {
     char line[MAX_LINE_LEN];
     char macro_name_buffer[MAX_LINE_LEN];
-    char macro_code_buffer[MAX_MACRO_LINES][MAX_LINE_LEN];
+    char macro_lines_buffer[MAX_LINES_PER_MACRO][MAX_LINE_LEN];
     int macro_code_line_count = 0;
     MacroState m_state = M_OTHER;
     Tokens tokenized_line;
@@ -139,25 +139,29 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
             continue;
         }
 
-
-        
         switch (m_state)
         {
         case M_CODE:
         {
             Tokens body_tokens = tokenize_line(line);
 
-            if (body_tokens.count > 0 && is_macro_end(body_tokens.tokens[0]))
+            if (is_macro_end(body_tokens.tokens[0]))
             {
-                add_macro(&table, macro_name_buffer, macro_code_buffer, macro_code_line_count);
+                if (body_tokens.count <= 0)
+                    write_error_log(status_info, W004_MACRO_EMPTY, -1);
+                int j;
+                for (j = 0; j < macro_code_line_count; j++)
+                    printf("✅ macro_lines_buffer[%d] = \"%s\"\n", j, macro_lines_buffer[j]);
+
+                add_macro(&table, macro_name_buffer, macro_lines_buffer, macro_code_line_count);
                 macro_code_line_count = 0;
                 macro_name_buffer[0] = '\0';
                 m_state = M_OTHER;
             }
             else
             {
-                strncpy(macro_code_buffer[macro_code_line_count], line, MAX_LINE_LEN - 1);
-                macro_code_buffer[macro_code_line_count][MAX_LINE_LEN - 1] = '\0';
+                strncpy(macro_lines_buffer[macro_code_line_count], line, MAX_LINE_LEN - 1);
+                macro_lines_buffer[macro_code_line_count][MAX_LINE_LEN - 1] = '\0';
                 macro_code_line_count++;
             }
             break;

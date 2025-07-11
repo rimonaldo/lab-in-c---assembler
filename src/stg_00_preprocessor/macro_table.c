@@ -10,7 +10,7 @@ void init_macro_table(MacroTable *table)
     table->count = 0;
 }
 
-int add_macro(MacroTable *table, const char *name, char lines[][MAX_LINE_LEN], int line_count)
+int add_macro(MacroTable *table, const char *name, char lines[MAX_LINES_PER_MACRO][MAX_LINE_LEN], int line_count)
 {
     printf("Adding macro: %s with %d lines\n", name, line_count);
 
