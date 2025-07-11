@@ -16,7 +16,7 @@
     Constants and Globals
 --------------------------*/
 
-#define MAX_LINE_LEN 256
+#define MAX_LINE_LEN 82
 #define MAX_MACRO_LINES 100
 
 /* Used to store the macro currently found (optional global) */
@@ -85,6 +85,8 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
     char base_name[PATH_MAX];
     char output_path[PATH_MAX];
 
+    Macro macro;
+
     /* Initialize macro table */
     init_macro_table(&table);
 
@@ -137,11 +139,15 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
             continue;
         }
 
+
+        
         switch (m_state)
         {
         case M_CODE:
-            /* Collecting lines inside macro body */
-            if (is_macro_end(tokenized_line.tokens[0]))
+        {
+            Tokens body_tokens = tokenize_line(line);
+
+            if (body_tokens.count > 0 && is_macro_end(body_tokens.tokens[0]))
             {
                 add_macro(&table, macro_name_buffer, macro_code_buffer, macro_code_line_count);
                 macro_code_line_count = 0;
@@ -155,6 +161,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
                 macro_code_line_count++;
             }
             break;
+        }
 
         case M_OTHER:
             /* Handle comments and macro declarations */
@@ -167,6 +174,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
                 if (tokenized_line.count < 2)
                 {
                     fprintf(stderr, "Error: Macro name missing after 'mcro'\n");
+                    /* handle error */
                     break;
                 }
 
@@ -175,6 +183,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 
                 if (macro_exists(&table, macro_name_buffer))
                 {
+                    /* handle error */
                     fprintf(stderr, "Error: Macro '%s' redefined.\n", macro_name_buffer);
                     break;
                 }

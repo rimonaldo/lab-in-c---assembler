@@ -29,6 +29,7 @@ int add_macro(MacroTable *table, const char *name, char lines[][MAX_LINE_LEN], i
     for (i = 0; i < line_count && i < MAX_MACRO_LINES; ++i)
     {
         strncpy(macro->lines[i], lines[i], MAX_LINE_LEN - 1);
+        printf("lines[%d] = \"%s\"\n", i, lines[i]);
         macro->lines[i][MAX_LINE_LEN - 1] = '\0';
     }
 
