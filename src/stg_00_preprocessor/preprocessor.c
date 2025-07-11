@@ -72,6 +72,7 @@ int macro_exists(const MacroTable *table, const char *name)
 
 int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 {
+    int line_number = 1;
     char line[MAX_LINE_LEN];
     char macro_name_buffer[MAX_LINE_LEN];
     char macro_lines_buffer[MAX_LINES_PER_MACRO][MAX_LINE_LEN];
@@ -147,8 +148,8 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 
             if (is_macro_end(body_tokens.tokens[0]))
             {
-                if (body_tokens.count <= 0)
-                    write_error_log(status_info, W004_MACRO_EMPTY, -1);
+                if (macro_code_line_count <= 0)
+                    write_error_log(status_info, W404_MACRO_EMPTY, -line_number);
                 int j;
                 for (j = 0; j < macro_code_line_count; j++)
                     printf("✅ macro_lines_buffer[%d] = \"%s\"\n", j, macro_lines_buffer[j]);
@@ -175,12 +176,8 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
             }
             else if (is_macro_start(tokenized_line.tokens[0]))
             {
-                if (tokenized_line.count < 2)
-                {
-                    fprintf(stderr, "Error: Macro name missing after 'mcro'\n");
-                    /* handle error */
-                    break;
-                }
+                if (strcmp(tokenized_line.tokens[1], "mcroend") >= 0)
+                    write_error_log(status_info, W402_MACRO_UNNAMED, line_number);
 
                 strncpy(macro_name_buffer, tokenized_line.tokens[1], MAX_LINE_LEN - 1);
                 macro_name_buffer[MAX_LINE_LEN - 1] = '\0';
@@ -189,6 +186,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
                 {
                     /* handle error */
                     fprintf(stderr, "Error: Macro '%s' redefined.\n", macro_name_buffer);
+                    write_error_log(status_info, W403_MACRO_REDEFINED, line_number);
                     break;
                 }
 
@@ -201,6 +199,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
             }
             else if (macro_exists(&table, tokenized_line.tokens[0]))
             {
+
                 expand_macro(&table, tokenized_line.tokens[0], output);
             }
             else
@@ -212,6 +211,7 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
         default:
             break;
         }
+        line_number++;
     }
 
     /* Cleanup */

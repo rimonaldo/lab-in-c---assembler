@@ -14,9 +14,20 @@ mcroend
 mcro EMPTY_MACRO
 mcroend
 
+mcro mcroend
+
 mcro JUMP_TO_END
     jmp END
 mcroend
+
+mcro JUMP_TO_END
+    jmp END
+mcroend
+
+
+mcro EMPTY_WARNING
+mcroend
+
 
 ; Program start
 
@@ -29,6 +40,8 @@ start:
 
     ; Call empty macro - should produce no output
     EMPTY_MACRO
+
+    EMPTY_WARNING
 
     ; Normal instructions
     mov r3, r4

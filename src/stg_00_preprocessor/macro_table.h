@@ -32,6 +32,8 @@ int add_macro_line(MacroTable *table, const char *line);
 /* Get a pointer to a macro by name, or NULL if not found */
 const Macro *get_macro(const MacroTable *table, const char *name);
 
+const int get_macro_idx(const MacroTable *table, const char *name);
+
 void expand_macro(MacroTable *table, const char *name, FILE *output);
 
 void print_macro_table(const MacroTable *table);

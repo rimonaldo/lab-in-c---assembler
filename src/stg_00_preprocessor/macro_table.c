@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "macro_table.h"
+#include "../common/errors/errors.h"
 
 #define MAX_MACRO_NAME_LEN 31
 #define MAX_MACRO_LINES 100
@@ -50,6 +51,25 @@ int add_macro_line(MacroTable *table, const char *line)
     current->lines[current->line_count][MAX_LINE_LEN - 1] = '\0';
     current->line_count++;
     return 1; /*Success*/
+}
+
+const int get_macro_idx(const MacroTable *table, const char *name)
+{
+    int i;
+    for (i = 0; i < table->count; i++)
+    {
+        printf("\t🔍 🔍comparing %s with: %s\n", name, table->macros[i].name);
+
+        if (strcmp(table->macros[i].name, name) == 0)
+        {
+            if (table->macros[i].line_count == 0)
+            {
+                fprintf(stderr, "⚠️  Warning: Macro '%s' has no lines\n", table->macros[i].name);
+            }
+            return i;
+        }
+    }
+    return -1;
 }
 
 const Macro *get_macro(const MacroTable *table, const char *name)
