@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
     StatusInfo *status_info = malloc(sizeof(StatusInfo));
     status_info->error_log = malloc(sizeof(ErrorInfo) * 10);
     status_info->capacity = 10;
+    status_info->warning_count = 0;
     /*
      * Extract the basename of the file (without path):
      * If input is "path/to/file.asm", we want just "file.asm"

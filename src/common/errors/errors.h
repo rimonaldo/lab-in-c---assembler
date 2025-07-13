@@ -65,6 +65,7 @@ typedef struct
 {
     ErrorInfo *error_log; /* מערך דינאמי */
     int error_count;      /* כמה שגיאות קיימות כרגע */
+    int warning_count;
     int capacity;         /* כמה מוקצה כרגע בזיכרון */
 } StatusInfo;
 

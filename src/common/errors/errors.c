@@ -70,7 +70,7 @@ void print_errors(StatusInfo *status_info)
     if (!status_info || !status_info->error_log)
         return;
 
-    for (i = 0; i < status_info->error_count; i++)
+    for (i = 0; i < status_info->error_count + status_info->warning_count; i++)
     {
         ErrorInfo *err = &status_info->error_log[i];
         const char *sev_str = (err->sevirity == SEV_ERROR) ? "Error" : "Warning";
@@ -105,9 +105,12 @@ const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int lin
         .message = get_error_log(code)->message,
         .sevirity = get_error_log(code)->sevirity};
 
-    status_info->error_log[status_info->error_count] = new_err;
+    status_info->error_log[status_info->error_count + status_info->warning_count] = new_err;
     if (new_err.sevirity == SEV_WARNING)
+    {
         PRINT_WRN(new_err);
+        status_info->warning_count++;
+    }
     else
     {
         PRINT_ERR(new_err);
