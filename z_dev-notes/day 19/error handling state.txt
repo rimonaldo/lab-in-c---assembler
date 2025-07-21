@@ -1,0 +1,50 @@
+i am currently handling errors via a bank of predefined erros and warnings 
+following the prefix E|W and than <code number>
+
+code numbers:
+400-499 => preprocessor related
+    E400_MACRO_UNDEFINED ✅
+    E401_MACRO_NESTED ❌
+    W402_MACRO_UNNAMED ✅
+    W403_MACRO_REDEFINED ✅ error implemented but logic to expand last definition is not (meaning the first declaration is the only valid one)
+    W404_MACRO_EMPTY ✅
+
+500-599 => label related
+    E500_LABEL_INVALID ❌
+    E501_LABEL_RESERVED ❌
+    E502_LABEL_REDEFINED ✅
+    E503_LABEL_UNDEFINED ❌
+    E504_LABEL_FORWARD_UNDEFINED ❌
+    E505_LABEL_ENTRY_NOT_FOUND ❌
+    E506_LABEL_ENTRY_AND_EXTERN ❌
+    W507_LABEL_ON_ENTRY_OR_EXTERN ❌
+    W508_LABEL_UNUSED ❌
+
+600-699 => instructions and operands related 
+    E600_INSTRUCTION_NAME_INVALID ❌ 
+    E601_INSTRUCTION_FORMAT_INVALID ❌
+    E602_INSTRUCTION_TRAILING_CHARS ❌
+    E603_INSTRUCTION_ADDRESSING_MODE_INVALID ❌
+
+    E610_OPERAND_IMMEDIATE_INVALID ❌
+    E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS ❌
+    E612_OPERAND_IMMEDIATE_FLOAT ❌
+
+    E613_OPERAND_REGISTER_INVALID ❌
+    E614_OPERAND_REGISTER_OUT_OF_BOUNDS ❌
+
+    E615_OPERAND_MAT_INDEX_INVALID ❌
+    E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS ❌
+    W617_OPERAND_MAT_INITIALIZED_UNDER ❌
+    W618_OPERAND_MAT_INITIALIZED_OVER ❌
+
+700-799 => memory related
+    E700_MEMORY_PROGRAM_WORD_LIMIT ❌
+    E701_MEMORY_LINE_CHAR_LIMIT ❌
+    E702_MEMORY_STACK_OVERFLOW_RISK ❌
+    W703_MEMORY_UNUSED_DATA ❌
+
+preprocessor errors are currently not fully supported due to shitty code
+that i dont want to completley refactor, would likely to stay that way.
+
+

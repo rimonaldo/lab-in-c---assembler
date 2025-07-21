@@ -1,0 +1,2 @@
+multiple macro definitions for MAX_LINE_LEN and or different char array sizes 
+caused faulty copies from macro_lines_buffer to macro->lines

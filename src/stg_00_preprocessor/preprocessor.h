@@ -4,8 +4,9 @@
 #define MAX_MACRO_LINES 50
 #define MAX_MACROS 100
 #define MAX_LINE_LEN 81 /*TODO: should be in centralized definitions file*/
+#include "../common/errors/errors.h"
 
-int run_pre_assembler(const char *filename);
+int run_pre_assembler(const char *filename, StatusInfo *status_info);
 
 int is_macro_start(const char *line); /*Detects 'mcro'*/
 int is_macro_end(const char *line);   /*Detects 'mcroend'*/

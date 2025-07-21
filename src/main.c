@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "common/errors/errors.h"
 #include "stg_00_preprocessor/preprocessor.h"
 #include "stg_01_first_pass/first_pass.h"
 
@@ -17,6 +18,10 @@ int main(int argc, char *argv[])
     /* Get pointer to input filename from command-line argument */
     const char *input_filename = argv[1];
 
+    StatusInfo *status_info = malloc(sizeof(StatusInfo));
+    status_info->error_log = malloc(sizeof(ErrorInfo) * 10);
+    status_info->capacity = 10;
+    status_info->warning_count = 0;
     /*
      * Extract the basename of the file (without path):
      * If input is "path/to/file.asm", we want just "file.asm"
@@ -36,11 +41,25 @@ int main(int argc, char *argv[])
     generate_expanded_filename(expanded_filename, sizeof(expanded_filename), basename);
 
     /* Run the pre-assembler on the original source file */
-    run_pre_assembler(input_filename);
+    run_pre_assembler(input_filename, status_info);
+
+    print_errors(status_info);
+    if (status_info->error_count > 0)
+    {
+        printf("Did not pass preprocessor stage\n");
+        return 0;
+    }
 
     /* Run the first pass on the preprocessed (".am") file */
-    run_first_pass(expanded_filename);
+    run_first_pass(expanded_filename, status_info);
 
+    if (status_info->error_count > 0)
+    {
+        printf("Did not pass first_pass stage\n");
+        return 0;
+    }
+
+    printf("------------Starting 2nd pass------------\n");
     /* Return success */
     return 0;
 }
