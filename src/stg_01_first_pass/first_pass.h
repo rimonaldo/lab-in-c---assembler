@@ -15,7 +15,8 @@ typedef enum
 {
     SYMBOL_DATA,
     SYMBOL_CODE,
-    SYMBOL_EXTERN
+    SYMBOL_EXTERN,
+    SYMBOL_ENTRY
 } SymbolType;
 
 typedef struct SymbolInfo
@@ -45,7 +46,7 @@ int is_comment_line(char *token);
 int is_empty_line(Tokens tokens);
 
 char *copy_label_token(char *token);
-void insert_entry_label(Table *ent_table, char *label);
+void insert_entry_label(Table *ent_table, char *label, int address);
 void insert_extern_label(Table *ext_table, char *label, int address);
 void set_directive_flags(ASTNode *node, SymbolInfo *info);
 

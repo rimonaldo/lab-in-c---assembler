@@ -1,0 +1,7 @@
+coming back after a long break
+
+2nd pass should result in all addresses allocated
+
+
+go through each ast node
+if ast node has direct addressing mode (label) => look for address in symbol table

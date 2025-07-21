@@ -95,7 +95,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
                 {
                     symbol_info->type = SYMBOL_CODE;
                     symbol_info->address = IC;
-                    /* insert to table with DC before Data increment as address */
+                    /* insert to table with IC before Instruction increment as address */
                     if (table_insert(symbol_table, clean_label, symbol_info))
                         PRINT_LABEL_INSERT(clean_label, IC);
                     else
@@ -126,12 +126,31 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             /* Handle .entry directive */
             if (node->content.directive.type == ENTRY)
             {
+                int address = -100;
+                char *str_name = tokenized_line.tokens[leader_idx + 1];
+                strncpy(clean_label, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
+
+                *symbol_info->name = clean_label;
+
+                void *data = table_lookup(symbol_table, clean_label);
+                SymbolInfo *info = (SymbolInfo *)data;
+
+                if (info->name)
+                {
+                    info->is_entry = 1; /* Mark symbol as entry */
+                    address = DC;
+                }
+                else
+                {
+                    printf("Symbol %s not found yet\n", clean_label);
+                }
                 /* Get the label token after directive */
                 char *token = tokenized_line.tokens[leader_idx + 1];
                 label_token = copy_label_token(token);
                 /* Add to entry table with temp -100 address */
                 symbol_info->is_entry = 1;
-                insert_entry_label(ent_table, label_token);
+
+                insert_entry_label(ent_table, label_token, address);
             }
             /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
@@ -409,15 +428,30 @@ Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_lin
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
     case MAT_ACCESS:
+    {
+
         /* Parse matrix access: label[reg1][reg2] */
-        operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
-        operand_to_parse->value.index.row_reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
-        operand_to_parse->value.index.col_reg_num = atoi(tokenized_line.tokens[token_idx + 2] + 1);
+        int str_label_size = 0;
+        int i = 0;
+        while (tokenized_line.tokens[token_idx][str_label_size] != '[')
+            str_label_size++;
+        char str_label[str_label_size + 1];
+        while (i < str_label_size)
+        {
+            str_label[i] = tokenized_line.tokens[token_idx][i];
+            i++;
+        }
+        str_label[str_label_size] = '\0';
+
+        operand_to_parse->value.index.label = my_strdup(str_label);
+        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 2] - '0';
+        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
         printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
                operand_to_parse->value.index.col_reg_num);
-        break;
+    }
+    break;
     case NONE:
     {
         /*TODO: not entering*/
@@ -581,7 +615,8 @@ int is_valid_label_name(char *token)
     {
         if (!((token[i] >= 'A' && token[i] <= 'Z') ||
               (token[i] >= 'a' && token[i] <= 'z') ||
-              (token[i] >= '0' && token[i] <= '9')))
+              (token[i] >= '0' && token[i] <= '9') ||
+              (token[i] == '_')))
         {
             return false;
             /*handle error */
@@ -712,15 +747,22 @@ char *copy_label_token(char *token)
     return copy;
 }
 
-void insert_entry_label(Table *ent_table, char *label)
+void insert_entry_label(Table *ent_table, char *label, int address)
 {
     int *addr = malloc(sizeof(int));
-    *addr = -100;
+    if (!addr)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        return;
+    }
+
+    *addr = address; /* Store the value in allocated memory */
     table_insert(ent_table, label, addr);
 }
 
 void insert_extern_label(Table *ext_table, char *label, int address)
 {
+
     int *addr = malloc(sizeof(int));
     *addr = address;
     table_insert(ext_table, label, addr);
