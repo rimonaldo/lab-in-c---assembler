@@ -5,6 +5,9 @@
 
 char *my_strdup(const char *s);
 char *trim_whitespace(char *str);
+void init_symbol_table()
+{
+}
 
 /* -------------- MAIN DRIVER -------------- */
 void run_first_pass(char *filename, StatusInfo *status_info)
@@ -284,18 +287,60 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     {
         int i;
         /* validate .mat directive format */
-        char *size_row = tokenized_line.tokens[leader_idx + 2];
-        char *size_col = tokenized_line.tokens[leader_idx + 5];
-        if (!is_valid_number(size_row) || !is_valid_number(size_col))
+        char size_row = tokenized_line.tokens[leader_idx + 2][0];
+        char size_col = tokenized_line.tokens[leader_idx + 2][3];
+
+        /* go over each char:
+        tokenized_line.tokens[leader_idx + 1] = '['
+        tokenized_line.tokens[leader_idx + 2] should be number
+        keep adding number chars untill hitting ]
+        skip white space, when hitting [, start adding chars to col as long as numbers and char is not ]*/
+        int j = 0;
+        if (tokenized_line.tokens[leader_idx + 1][0] != '[')
         {
-            /* handle error */
-            printf("ERROR: missing row or col size in mat directive ");
+            printf("INDEX NOT STARTING WITH [");
             info->status = ERR1;
-            break;
+        }
+
+        char size_row_buffer[4]={0};
+        char size_col_buffer[4];
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && j < 4)
+        {
+            size_row_buffer[j] = tokenized_line.tokens[leader_idx + 2][j];
+            j++;
+        }
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("INDEX NOT ENDING WITH ]");
+        }
+        size_row_buffer[j] = '\0';
+        j++;
+        if (tokenized_line.tokens[leader_idx + 2][j] != '[')
+        {
+            printf("COL INDEX NOT STARTING WITH [");
+            info->status = ERR1;
+        }
+
+        int k = 0;
+        j++;
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && k < 4)
+        {
+            size_col_buffer[k] = tokenized_line.tokens[leader_idx + 2][j];
+            k++;
+            j++;
+        }
+        size_col_buffer[k] = '\0';
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("COL INDEX NOT ENDING WITH ]");
         }
 
         /* adjust data count */
-        data_size = atoi(size_row) * atoi(size_col);
+        data_size = atoi(size_row_buffer) * atoi(size_col_buffer);
 
         /* allocate values array */
         int *values = malloc((sizeof(int)) * data_size);

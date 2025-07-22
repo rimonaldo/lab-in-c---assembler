@@ -3,7 +3,7 @@ error *stam shura*
 
 mat parsing 
     fix directive .mat parsing 
-    (since we ignore [] as delimeter in tokenizer)
+    (since we ignore [] as delimeter in tokenizer) ✅ (very ugly code but it works for now )
 
 corrected entry symbols handling
     fix declaring .entry inline of symbol declaration

@@ -6,7 +6,7 @@ LOOP:   jmp  END
     prn  #-5 
     sub  r1, r4 
     inc  K 
-    mov  M1[r3][r3],r3 
+    mov  M1 [r3][r3],r3 
     add  r3, EXT_DATA
     bne  LOOP 
 
@@ -14,7 +14,7 @@ END:    stop
 STR:    .string  "abcdef"
 LENGTH:  .data  6,-9,15 
 K:    .data  22 
-M1:    .mat  [2][2]  1,2,3,4 
+M1:    .mat  [23][2]  1,2,3,4 
 
 
 .entry M1
