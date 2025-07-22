@@ -1,0 +1,25 @@
+error *stam shura* 
+    bad syntax just get skipped. need to write error for undefined line
+
+mat parsing 
+    fix directive .mat parsing 
+    (since we ignore [] as delimeter in tokenizer)
+
+corrected entry symbols handling
+    fix declaring .entry inline of symbol declaration
+    (should have type code or data depend on next line)
+
+    
+symbol table item data type + memory seperation of data image and code image
+    * create incrementing logic plan 
+    * symbol_table data as SymbolInfo => is not | saved or loaded | properly
+    so maybe i need an insert function that will insert SymbolInfo
+    
+
+2nd pass - encode direct addressed operands
+    traverse syntax tree nodes from head 
+    if it is instruction, check if any operand is direct mode
+    if an operand has direct addressing mode, look for it in symbol symbol_table
+    encode most significant 8 bits to address, 2 least sig bits to AER (so i need is_entry is_extern info on table)
+
+2nd pass - write .ent and .ext files

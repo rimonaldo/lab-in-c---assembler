@@ -1,0 +1,4 @@
+traverse syntax tree nodes from head 
+if it is instruction, check if any operand is direct mode
+if an operand has direct addressing mode, look for it in symbol symbol_table
+encode most significant 8 bits to address, 2 least sig bits to AER (so i need is_entry is_extern info on table)
