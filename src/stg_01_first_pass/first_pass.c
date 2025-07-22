@@ -185,6 +185,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
         case INVALID_STATEMENT:
         {
             /* handle error */
+            write_error_log(status_info, E600_INSTRUCTION_NAME_INVALID, line_number);
         }
         break;
         }
@@ -205,11 +206,11 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     TableNode *current = symbol_table->head;
     SymbolInfo *curr_info = (SymbolInfo *)current;
 
-    int j=1;
+    int j = 1;
     while (current->next)
     {
         curr_info = current->data;
-        printf("%d\n",j++);
+        printf("%d\n", j++);
         current = current->next;
     }
     /* close and release memory */

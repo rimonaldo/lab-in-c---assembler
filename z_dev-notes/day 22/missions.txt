@@ -1,5 +1,5 @@
 error *stam shura* 
-    bad syntax just get skipped. need to write error for undefined line
+    bad syntax just get skipped. need to write error for undefined line ✅
 
 mat parsing 
     fix directive .mat parsing 

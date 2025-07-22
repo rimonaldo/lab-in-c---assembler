@@ -1,4 +1,5 @@
 .extern EXT_DATA
+stam shura
 MAIN:            mov      M1[r2][r7],LENGTH 
     add  r2,STR 
 LOOP:   jmp  END 
