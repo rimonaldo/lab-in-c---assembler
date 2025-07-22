@@ -10,7 +10,7 @@ char *trim_whitespace(char *str);
 void run_first_pass(char *filename, StatusInfo *status_info)
 {
     int is_label_declaration = 0;
-    int IC = 0, DC = 0;
+    int IC = 100, DC = 0;
     Table *symbol_table = table_create(), *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
     char line[1024]; /* move to machine definitions */
@@ -200,7 +200,18 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
+    int ICF = IC + 1;
+    /* update data memory locations */
+    TableNode *current = symbol_table->head;
+    SymbolInfo *curr_info = (SymbolInfo *)current;
 
+    int j=1;
+    while (current->next)
+    {
+        curr_info = current->data;
+        printf("%d\n",j++);
+        current = current->next;
+    }
     /* close and release memory */
     free_ast(head);
     fclose(file);
