@@ -16,20 +16,10 @@
  * Each node holds a key, a pointer to the data (value), and a pointer
  * to the next node in the list.
  */
-typedef struct TableNode
-{
-    char *key;              /* The key for this entry (string) */
-    void *data;             /* Pointer to the associated data */
-    struct TableNode *next; /* Pointer to the next node in the table */
-} TableNode;
 
 /**
  * @brief The main table structure that holds the linked list.
  */
-struct Table
-{
-    TableNode *head; /* Pointer to the first node in the list */
-};
 
 /**
  * @brief Creates and initializes a new, empty table.
@@ -201,3 +191,5 @@ void table_print(Table *table, void (*print_func)(const char *key, void *data))
         current = current->next;
     }
 }
+
+
