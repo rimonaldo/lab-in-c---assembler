@@ -1,5 +1,5 @@
 .extern EXT_DATA
-stam shura
+
 MAIN:            mov      M1[r2][r7],LENGTH 
     add  r2,STR 
 LOOP:   jmp  END 
@@ -10,10 +10,10 @@ LOOP:   jmp  END
     add  r3, EXT_DATA
     bne  LOOP 
 
-ENT_DATA: .ent ENT_DATA
+ENT_DATA: 
     .data 5,7 
 
-ENT_CODE: .ent ENT_CODE
+ENT_CODE: 
     add  r2,STR  
 
 END:    stop 

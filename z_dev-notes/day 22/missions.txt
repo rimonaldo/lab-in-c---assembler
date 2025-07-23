@@ -7,7 +7,7 @@ mat parsing
 
 corrected entry symbols handling
     fix declaring .entry inline of symbol declaration
-    (should have type code or data depend on next line) ✅ 
+    (should have type code or data depend on next line) ❌ 
 
     
 symbol table item data type + memory seperation of data image and code image ✅
