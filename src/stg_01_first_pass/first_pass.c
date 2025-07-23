@@ -154,6 +154,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
                 symbol_info->is_entry = 1;
 
                 insert_entry_label(ent_table, label_token, address);
+                is_label_declaration = -1;
             }
             /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
@@ -212,8 +213,14 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     int j = 1;
     while (current->next)
     {
-        curr_info = current->data;
+        void *data_ptr = current->data;
+        curr_info = (SymbolInfo *)data_ptr;
+        strcpy(((SymbolInfo *)current->data)->name, current->key);
         printf("%d\n", j++);
+        if (curr_info->type == SYMBOL_DATA)
+        {
+            curr_info->address += IC + 1;
+        }
         current = current->next;
     }
     /* close and release memory */
@@ -302,7 +309,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             info->status = ERR1;
         }
 
-        char size_row_buffer[4]={0};
+        char size_row_buffer[4] = {0};
         char size_col_buffer[4];
         while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && j < 4)
         {
