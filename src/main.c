@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     }
     printf("------------Starting 2nd pass------------\n");
 
-    /*run_second_pass(symbol_table, ast,  status_info);*/
+    run_second_pass(symbol_table, &ast_head, status_info);
     /* fill addresses */
     /* traverse ast nodes.
         when operand is directly addressed
