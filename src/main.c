@@ -53,8 +53,29 @@ int main(int argc, char *argv[])
     /* Run the first pass on the preprocessed (".am") file */
     ASTNode *ast_head = NULL;
     Table *symbol_table = table_create();
-    run_first_pass(expanded_filename, symbol_table, &ast_head, status_info);
+    int IC = 100;
+    run_first_pass(expanded_filename, symbol_table, &ast_head, &IC, status_info);
 
+    /* update data memory locations */
+    TableNode *current = symbol_table->head;
+    SymbolInfo *curr_info = (SymbolInfo *)current;
+    int ICF = IC;
+    int j = 1;
+    while (current->next)
+    {
+        void *data_ptr = current->data;
+        curr_info = (SymbolInfo *)data_ptr;
+        strcpy(((SymbolInfo *)current->data)->name, current->key);
+        printf("%d\n", j++);
+        if (curr_info->type == SYMBOL_DATA)
+        {
+            curr_info->address += ICF;
+            printf("new addy: %d\n", curr_info->address);
+        }
+
+        current = current->next;
+    }
+    /* close and release memory */
     if (status_info->error_count > 0)
     {
         printf("Did not pass first_pass stage\n");
@@ -67,27 +88,6 @@ int main(int argc, char *argv[])
         }
         return 0;
     }
-
-    /* update data memory locations */
-    TableNode *current = symbol_table->head;
-    SymbolInfo *curr_info = (SymbolInfo *)current;
-    int ICF = 123;
-    int j = 1;
-    while (current->next)
-    {
-        void *data_ptr = current->data;
-        curr_info = (SymbolInfo *)data_ptr;
-        strcpy(((SymbolInfo *)current->data)->name, current->key);
-        printf("%d\n", j++);
-        if (curr_info->type == SYMBOL_DATA)
-        {
-            curr_info->address += ICF;
-        }
-
-        current = current->next;
-    }
-    /* close and release memory */
-
     printf("------------Starting 2nd pass------------\n");
 
     /*run_second_pass(symbol_table, ast,  status_info);*/

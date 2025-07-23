@@ -10,10 +10,11 @@ void init_symbol_table()
 }
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, StatusInfo *status_info)
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC, StatusInfo *status_info)
 {
+    /*BUG: LABEL: (blank) -> [new_line]: .directive | instruction => is not read properly*/
     int is_label_declaration = 0;
-    int IC = 100, DC = 0;
+    int DC = 0;
     Table *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
     char line[1024]; /* move to machine definitions */
@@ -97,16 +98,16 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, StatusI
                 if (is_label_declaration >= 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
-                    symbol_info->address = IC;
-                    /* insert to table with IC before Instruction increment as address */
+                    symbol_info->address = *IC;
+                    /* insert to table with *IC before Instruction increment as address */
                     if (table_insert(symbol_table, clean_label, symbol_info))
-                        PRINT_LABEL_INSERT(clean_label, IC);
+                        PRINT_LABEL_INSERT(clean_label, *IC);
                     else
                         printf("[Insert Error] Failed to insert label\n");
                     is_label_declaration = -1;
                 }
                 /* increment instruction counter */
-                IC += encoded_line->words_count;
+                *IC += encoded_line->words_count;
             }
         }
         break;
@@ -204,7 +205,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, StatusI
     printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
-    int ICF = IC + 1;
+    int ICF = *IC + 1;
    
 
     fclose(file);
