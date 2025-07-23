@@ -10,17 +10,17 @@ void init_symbol_table()
 }
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename, StatusInfo *status_info)
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, StatusInfo *status_info)
 {
     int is_label_declaration = 0;
     int IC = 100, DC = 0;
-    Table *symbol_table = table_create(), *ext_table = table_create(), *ent_table = table_create();
+    Table *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
     char line[1024]; /* move to machine definitions */
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
-    ASTNode *head = NULL, *tail = NULL;
+    ASTNode *tail = NULL;
     char *clean_label;
     ErrorInfo err;
     if (!file)
@@ -89,7 +89,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             if (!new_node)
                 break;
-            append_ast_node(&head, &tail, new_node);
+            append_ast_node(head, &tail, new_node);
 
             if (new_node->status != ERR1)
             {
@@ -120,7 +120,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             if (node->status != SUCCESS)
                 break;
 
-            append_ast_node(&head, &tail, node); /* Add node to AST */
+            append_ast_node(head, &tail, node); /* Add node to AST */
 
             symbol_info->type = SYMBOL_DATA;
             symbol_info->is_entry = -1;
@@ -154,7 +154,6 @@ void run_first_pass(char *filename, StatusInfo *status_info)
                 symbol_info->is_entry = 1;
 
                 insert_entry_label(ent_table, label_token, address);
-                is_label_declaration = -1;
             }
             /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
@@ -206,25 +205,8 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
     int ICF = IC + 1;
-    /* update data memory locations */
-    TableNode *current = symbol_table->head;
-    SymbolInfo *curr_info = (SymbolInfo *)current;
+   
 
-    int j = 1;
-    while (current->next)
-    {
-        void *data_ptr = current->data;
-        curr_info = (SymbolInfo *)data_ptr;
-        strcpy(((SymbolInfo *)current->data)->name, current->key);
-        printf("%d\n", j++);
-        if (curr_info->type == SYMBOL_DATA)
-        {
-            curr_info->address += IC + 1;
-        }
-        current = current->next;
-    }
-    /* close and release memory */
-    free_ast(head);
     fclose(file);
 }
 

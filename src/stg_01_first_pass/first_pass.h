@@ -28,7 +28,7 @@ typedef struct SymbolInfo
     int is_extern
 } SymbolInfo;
 
-void run_first_pass(char *filename, StatusInfo *status_info);
+void run_first_pass(char *filename,Table *symbol_table, ASTNode **head, StatusInfo *status_info);
 ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr);
 int is_symbol_declare(char *token);

@@ -51,15 +51,54 @@ int main(int argc, char *argv[])
     }
 
     /* Run the first pass on the preprocessed (".am") file */
-    run_first_pass(expanded_filename, status_info);
+    ASTNode *ast_head = NULL;
+    Table *symbol_table = table_create();
+    run_first_pass(expanded_filename, symbol_table, &ast_head, status_info);
 
     if (status_info->error_count > 0)
     {
         printf("Did not pass first_pass stage\n");
+        printf("Error count: %d\n", status_info->error_count);
+        printf("Warning count: %d\n", status_info->warning_count);
+        int i = 0;
+        for (i = 0; i < status_info->error_count; i++)
+        {
+            printf("Line: %d\n", status_info->error_log[i].line_number);
+        }
         return 0;
     }
 
+    /* update data memory locations */
+    TableNode *current = symbol_table->head;
+    SymbolInfo *curr_info = (SymbolInfo *)current;
+    int ICF = 123;
+    int j = 1;
+    while (current->next)
+    {
+        void *data_ptr = current->data;
+        curr_info = (SymbolInfo *)data_ptr;
+        strcpy(((SymbolInfo *)current->data)->name, current->key);
+        printf("%d\n", j++);
+        if (curr_info->type == SYMBOL_DATA)
+        {
+            curr_info->address += ICF;
+        }
+
+        current = current->next;
+    }
+    /* close and release memory */
+
     printf("------------Starting 2nd pass------------\n");
+
+    /*run_second_pass(symbol_table, ast,  status_info);*/
+    /* fill addresses */
+    /* traverse ast nodes.
+        when operand is directly addressed
+        look up in symbol table
+        found ? encode [address and ARE] : write error */
+
+    /* create .ent .ext and .obj */
+
     /* Return success */
     return 0;
 }
