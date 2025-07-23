@@ -10,11 +10,11 @@ LOOP:   jmp  END
     add  r3, EXT_DATA
     bne  LOOP 
 
-ENT_DATA: 
-    .data 5,7 
-
-ENT_CODE: 
+ENT_CODE: .entry ENT_CODE
     add  r2,STR  
+
+ENT_DATA: .entry ENT_DATA
+    .data 5,7 
 
 END:    stop 
 STR:    .string  "abcdef"

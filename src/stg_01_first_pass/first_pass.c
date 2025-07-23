@@ -10,7 +10,7 @@ void init_symbol_table()
 }
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC, StatusInfo *status_info)
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, StatusInfo *status_info)
 {
     /*BUG: LABEL: (blank) -> [new_line]: .directive | instruction => is not read properly*/
     int is_label_declaration = 0;
@@ -83,6 +83,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
         {
         case INSTRUCTION_STATEMENT:
         {
+
             EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
             Opcode opcode = get_opcode(leader);
             ASTNode *new_node;
@@ -104,6 +105,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
                         PRINT_LABEL_INSERT(clean_label, *IC);
                     else
                         printf("[Insert Error] Failed to insert label\n");
+
                     is_label_declaration = -1;
                 }
                 /* increment instruction counter */
@@ -130,6 +132,12 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
             /* Handle .entry directive */
             if (node->content.directive.type == ENTRY)
             {
+                if (is_label_declaration >= 0)
+                {
+                    insert_entry_label(ent_table, clean_label, symbol_info->address);
+                    line_number++;
+                    continue;
+                }
                 int address = -100;
                 char *str_name = tokenized_line.tokens[leader_idx + 1];
                 strncpy(clean_label, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
@@ -154,6 +162,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
                 /* Add to entry table with temp -100 address */
                 symbol_info->is_entry = 1;
 
+                
                 insert_entry_label(ent_table, label_token, address);
             }
             /* Handle .extern directive */
@@ -189,6 +198,10 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
         case INVALID_STATEMENT:
         {
             /* handle error */
+            if (is_label_declaration > 0 && strcmp(leader, "") == 0)
+            {
+                continue;
+            }
             write_error_log(status_info, E600_INSTRUCTION_NAME_INVALID, line_number);
         }
         break;
@@ -206,7 +219,6 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head,int *IC,
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
     int ICF = *IC + 1;
-   
 
     fclose(file);
 }
