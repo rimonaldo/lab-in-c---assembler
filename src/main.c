@@ -53,8 +53,20 @@ int main(int argc, char *argv[])
     /* Run the first pass on the preprocessed (".am") file */
     ASTNode *ast_head = NULL;
     Table *symbol_table = table_create();
+    EncodedList *encoded_list = malloc(sizeof(EncodedList));
+    if (!encoded_list)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        return 1;
+    }
+
+    /* Initialize */
+    encoded_list->size = 0;
+    encoded_list->head = NULL;
+    encoded_list->tail = NULL;
+
     int IC = 100;
-    run_first_pass(expanded_filename, symbol_table, &ast_head, &IC, status_info);
+    run_first_pass(expanded_filename, symbol_table, &ast_head, &IC, encoded_list, status_info);
 
     /* update data memory locations */
     TableNode *current = symbol_table->head;
@@ -90,7 +102,7 @@ int main(int argc, char *argv[])
     }
     printf("------------Starting 2nd pass------------\n");
 
-    run_second_pass(symbol_table, &ast_head, status_info);
+    run_second_pass(symbol_table, &ast_head,encoded_list, status_info);
     /* fill addresses */
     /* traverse ast nodes.
         when operand is directly addressed
