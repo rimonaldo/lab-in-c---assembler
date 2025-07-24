@@ -12,9 +12,7 @@
 #include "../common/errors/errors.h"
 #include "../common/symbols/symbols.h"
 
-
-
-void run_first_pass(char *filename,Table *symbol_table, ASTNode **head,int *IC ,StatusInfo *status_info);
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info);
 ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr);
 int is_symbol_declare(char *token);

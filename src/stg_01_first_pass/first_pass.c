@@ -10,7 +10,7 @@ void init_symbol_table()
 }
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, StatusInfo *status_info)
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info)
 {
     /*BUG: LABEL: (blank) -> [new_line]: .directive | instruction => is not read properly*/
     int is_label_declaration = 0;
@@ -109,6 +109,18 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                     is_label_declaration = -1;
                 }
                 /* increment instruction counter */
+                if (encoded_list->head == NULL)
+                {
+                    encoded_list->head = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                else
+                {
+                    encoded_list->tail->next = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                encoded_list->size++;
+
                 *IC += encoded_line->words_count;
             }
         }
@@ -162,7 +174,6 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 /* Add to entry table with temp -100 address */
                 symbol_info->is_entry = 1;
 
-                
                 insert_entry_label(ent_table, label_token, address);
             }
             /* Handle .extern directive */
@@ -504,7 +515,7 @@ Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_lin
 
         operand_to_parse->value.index.label = my_strdup(str_label);
         operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 2] - '0';
-        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
+        operand_to_parse->value.index.col_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
         printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
