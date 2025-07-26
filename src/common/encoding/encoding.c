@@ -187,6 +187,7 @@ void encode_operand(AddressingMode op_mode, int *added_word_idx, EncodedLine *li
 
         /* First extra word is for the matrix label address (handled like DIRECT) */
         printf("Waiting for address for matrix label: %s\n", line->ast_node->content.instruction.src_op.value.label);
+        line->is_waiting_words[line->words_count] = 1;
         line->words_count++;
         (*added_word_idx)++;
 
