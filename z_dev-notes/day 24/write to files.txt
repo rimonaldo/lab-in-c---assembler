@@ -1,0 +1,20 @@
+today we are going to write to output files! exciting! 
+
+include machines memory image, in two parts:
+    - instructions image
+    - data image 
+
+----------------------text lines----------------------
+first line -> 
+total length of instructions (by encoded words count)
+total length of data (by encoded words count)
+
+every line: 
+word address    word content
+
+all numbers will be in base4 (a,b,c,d)
+
+the content of the word will be change according to the AER status
+A will be set regular
+R -> the content is depended on the label's address
+E will be handled by the linker
