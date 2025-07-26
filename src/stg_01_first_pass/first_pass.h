@@ -10,24 +10,9 @@
 #include "../common/utils/utils.h"
 #include "../common/printer/printer.h"
 #include "../common/errors/errors.h"
+#include "../common/symbols/symbols.h"
 
-typedef enum
-{
-    SYMBOL_DATA,
-    SYMBOL_CODE,
-    SYMBOL_EXTERN
-} SymbolType;
-
-typedef struct SymbolInfo
-{
-    char name[31];
-    int address;
-    SymbolType type;
-    int is_entry;
-    int is_extern
-} SymbolInfo;
-
-void run_first_pass(char *filename, StatusInfo *status_info);
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info);
 ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx);
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr);
 int is_symbol_declare(char *token);
@@ -45,7 +30,7 @@ int is_comment_line(char *token);
 int is_empty_line(Tokens tokens);
 
 char *copy_label_token(char *token);
-void insert_entry_label(Table *ent_table, char *label);
+void insert_entry_label(Table *ent_table, char *label, int address);
 void insert_extern_label(Table *ext_table, char *label, int address);
 void set_directive_flags(ASTNode *node, SymbolInfo *info);
 

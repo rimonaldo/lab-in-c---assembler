@@ -1,58 +1,26 @@
-; Macro definitions
+.extern EXT_DATA
 
-mcro INIT_REGS
-    mov r0, #1
-    mov r1, #2
-    mov r2, #3
-mcroend
+MAIN:            mov      M1[r2][r7],LENGTH 
+    add  r2,STR 
+LOOP:   jmp  END 
+    prn  #-5 
+    sub  r1, r4 
+    inc  K 
+    mov  M1[r3][r3],r3 
+    add  r3, EXT_DATA
+    bne  LOOP 
 
-mcro CLEAR_FLAGS
-    clr flag1
-    clr flag2
-mcroend
+ENT_CODE: .entry ENT_CODE
+    add  r2,STR  
 
-mcro EMPTY_MACRO
-mcroend
+ENT_DATA: .entry ENT_DATA
+    .data 5,7 
 
-mcro mcroend
-
-mcro JUMP_TO_END
-    jmp END
-mcroend
-
-mcro JUMP_TO_END
-    jmp END
-mcroend
+END:    stop 
+STR:    .string  "abcdef"
+LENGTH:  .data  6,-9,15 
+K:    .data  22 
+M1:    .mat  [23][2]  1,2,3,4 
 
 
-mcro EMPTY_WARNING
-mcroend
-
-
-; Program start
-
-start:
-    ; Initialize registers
-    INIT_REGS
-
-    ; Clear flags
-    CLEAR_FLAGS
-
-    ; Call empty macro - should produce no output
-    EMPTY_MACRO
-
-    EMPTY_WARNING
-
-    ; Normal instructions
-    mov r3, r4
-    add r3, r5
-
-    ; Jump to end
-    JUMP_TO_END
-
-    ; These instructions should be skipped by jump
-    sub r5, r6
-    mov r7, r5
-
-END:
-    stop
+.entry M1

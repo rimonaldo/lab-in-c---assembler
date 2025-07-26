@@ -23,6 +23,11 @@ int is_valid_number(char *s)
     return 1;
 }
 
+int is_valid_num_char(char c)
+{
+    return (c >= '0' && c <= '9');
+}
+
 /**
  * A custom implementation of strdup for debugging purposes.
  * It allocates memory with malloc and copies the string content.

@@ -51,18 +51,71 @@ int main(int argc, char *argv[])
     }
 
     /* Run the first pass on the preprocessed (".am") file */
-    run_first_pass(expanded_filename, status_info);
+    ASTNode *ast_head = NULL;
+    Table *symbol_table = table_create();
+    EncodedList *encoded_list = malloc(sizeof(EncodedList));
+    if (!encoded_list)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        return 1;
+    }
 
+    /* Initialize */
+    encoded_list->size = 0;
+    encoded_list->head = NULL;
+    encoded_list->tail = NULL;
+
+    int IC = 100;
+    run_first_pass(expanded_filename, symbol_table, &ast_head, &IC, encoded_list, status_info);
+
+    /* update data memory locations */
+    TableNode *current = symbol_table->head;
+    SymbolInfo *curr_info = (SymbolInfo *)current;
+    int ICF = IC;
+    int j = 1;
+    while (current->next)
+    {
+        void *data_ptr = current->data;
+        curr_info = (SymbolInfo *)data_ptr;
+        strcpy(((SymbolInfo *)current->data)->name, current->key);
+        printf("%s\n", current->key);
+        j++;
+        if (curr_info->type == SYMBOL_DATA)
+        {
+            curr_info->address += ICF;
+            printf("new addy: %d\n", curr_info->address);
+        }
+
+        current = current->next;
+    }
+    /* close and release memory */
     if (status_info->error_count > 0)
     {
         printf("Did not pass first_pass stage\n");
+        printf("Error count: %d\n", status_info->error_count);
+        printf("Warning count: %d\n", status_info->warning_count);
+        int i = 0;
+        for (i = 0; i < status_info->error_count; i++)
+        {
+            printf("Line: %d\n", status_info->error_log[i].line_number);
+        }
         return 0;
     }
-
     printf("------------Starting 2nd pass------------\n");
+
+    run_second_pass(symbol_table, &ast_head, encoded_list,  status_info);
+    /* fill addresses */
+    /* traverse ast nodes.
+        when operand is directly addressed
+        look up in symbol table
+        found ? encode [address and ARE] : write error */
+
+    /* create .ent .ext and .obj */
+
     /* Return success */
     return 0;
 }
+
 
 /*
  * Build the output file name with extension ".am" in the "output/" folder.

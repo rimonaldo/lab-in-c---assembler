@@ -5,19 +5,23 @@
 
 char *my_strdup(const char *s);
 char *trim_whitespace(char *str);
+void init_symbol_table()
+{
+}
 
 /* -------------- MAIN DRIVER -------------- */
-void run_first_pass(char *filename, StatusInfo *status_info)
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info)
 {
+    /*BUG: LABEL: (blank) -> [new_line]: .directive | instruction => is not read properly*/
     int is_label_declaration = 0;
-    int IC = 0, DC = 0;
-    Table *symbol_table = table_create(), *ext_table = table_create(), *ent_table = table_create();
+    int DC = 0;
+    Table *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
     char line[1024]; /* move to machine definitions */
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
-    ASTNode *head = NULL, *tail = NULL;
+    ASTNode *tail = NULL;
     char *clean_label;
     ErrorInfo err;
     if (!file)
@@ -79,6 +83,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
         {
         case INSTRUCTION_STATEMENT:
         {
+
             EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
             Opcode opcode = get_opcode(leader);
             ASTNode *new_node;
@@ -86,7 +91,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             if (!new_node)
                 break;
-            append_ast_node(&head, &tail, new_node);
+            append_ast_node(head, &tail, new_node);
 
             if (new_node->status != ERR1)
             {
@@ -94,16 +99,29 @@ void run_first_pass(char *filename, StatusInfo *status_info)
                 if (is_label_declaration >= 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
-                    symbol_info->address = IC;
-                    /* insert to table with DC before Data increment as address */
+                    symbol_info->address = *IC;
+                    /* insert to table with *IC before Instruction increment as address */
                     if (table_insert(symbol_table, clean_label, symbol_info))
-                        PRINT_LABEL_INSERT(clean_label, IC);
+                        PRINT_LABEL_INSERT(clean_label, *IC);
                     else
                         printf("[Insert Error] Failed to insert label\n");
+
                     is_label_declaration = -1;
                 }
                 /* increment instruction counter */
-                IC += encoded_line->words_count;
+                if (encoded_list->head == NULL)
+                {
+                    encoded_list->head = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                else
+                {
+                    encoded_list->tail->next = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                encoded_list->size++;
+
+                *IC += encoded_line->words_count;
             }
         }
         break;
@@ -117,7 +135,7 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             if (node->status != SUCCESS)
                 break;
 
-            append_ast_node(&head, &tail, node); /* Add node to AST */
+            append_ast_node(head, &tail, node); /* Add node to AST */
 
             symbol_info->type = SYMBOL_DATA;
             symbol_info->is_entry = -1;
@@ -126,12 +144,37 @@ void run_first_pass(char *filename, StatusInfo *status_info)
             /* Handle .entry directive */
             if (node->content.directive.type == ENTRY)
             {
+                if (is_label_declaration >= 0)
+                {
+                    insert_entry_label(ent_table, clean_label, symbol_info->address);
+                    line_number++;
+                    continue;
+                }
+                int address = -100;
+                char *str_name = tokenized_line.tokens[leader_idx + 1];
+                strncpy(clean_label, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
+
+                *symbol_info->name = clean_label;
+
+                void *data = table_lookup(symbol_table, clean_label);
+                SymbolInfo *info = (SymbolInfo *)data;
+
+                if (info->name)
+                {
+                    info->is_entry = 1; /* Mark symbol as entry */
+                    address = DC;
+                }
+                else
+                {
+                    printf("Symbol %s not found yet\n", clean_label);
+                }
                 /* Get the label token after directive */
                 char *token = tokenized_line.tokens[leader_idx + 1];
                 label_token = copy_label_token(token);
                 /* Add to entry table with temp -100 address */
                 symbol_info->is_entry = 1;
-                insert_entry_label(ent_table, label_token);
+
+                insert_entry_label(ent_table, label_token, address);
             }
             /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
@@ -166,6 +209,11 @@ void run_first_pass(char *filename, StatusInfo *status_info)
         case INVALID_STATEMENT:
         {
             /* handle error */
+            if (is_label_declaration > 0 && strcmp(leader, "") == 0)
+            {
+                continue;
+            }
+            write_error_log(status_info, E600_INSTRUCTION_NAME_INVALID, line_number);
         }
         break;
         }
@@ -181,9 +229,8 @@ void run_first_pass(char *filename, StatusInfo *status_info)
     printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
+    int ICF = *IC + 1;
 
-    /* close and release memory */
-    free_ast(head);
     fclose(file);
 }
 
@@ -253,18 +300,60 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     {
         int i;
         /* validate .mat directive format */
-        char *size_row = tokenized_line.tokens[leader_idx + 2];
-        char *size_col = tokenized_line.tokens[leader_idx + 5];
-        if (!is_valid_number(size_row) || !is_valid_number(size_col))
+        char size_row = tokenized_line.tokens[leader_idx + 2][0];
+        char size_col = tokenized_line.tokens[leader_idx + 2][3];
+
+        /* go over each char:
+        tokenized_line.tokens[leader_idx + 1] = '['
+        tokenized_line.tokens[leader_idx + 2] should be number
+        keep adding number chars untill hitting ]
+        skip white space, when hitting [, start adding chars to col as long as numbers and char is not ]*/
+        int j = 0;
+        if (tokenized_line.tokens[leader_idx + 1][0] != '[')
         {
-            /* handle error */
-            printf("ERROR: missing row or col size in mat directive ");
+            printf("INDEX NOT STARTING WITH [");
             info->status = ERR1;
-            break;
+        }
+
+        char size_row_buffer[4] = {0};
+        char size_col_buffer[4];
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && j < 4)
+        {
+            size_row_buffer[j] = tokenized_line.tokens[leader_idx + 2][j];
+            j++;
+        }
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("INDEX NOT ENDING WITH ]");
+        }
+        size_row_buffer[j] = '\0';
+        j++;
+        if (tokenized_line.tokens[leader_idx + 2][j] != '[')
+        {
+            printf("COL INDEX NOT STARTING WITH [");
+            info->status = ERR1;
+        }
+
+        int k = 0;
+        j++;
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && k < 4)
+        {
+            size_col_buffer[k] = tokenized_line.tokens[leader_idx + 2][j];
+            k++;
+            j++;
+        }
+        size_col_buffer[k] = '\0';
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("COL INDEX NOT ENDING WITH ]");
         }
 
         /* adjust data count */
-        data_size = atoi(size_row) * atoi(size_col);
+        data_size = atoi(size_row_buffer) * atoi(size_col_buffer);
 
         /* allocate values array */
         int *values = malloc((sizeof(int)) * data_size);
@@ -409,15 +498,30 @@ Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_lin
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
     case MAT_ACCESS:
+    {
+
         /* Parse matrix access: label[reg1][reg2] */
-        operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
-        operand_to_parse->value.index.row_reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
-        operand_to_parse->value.index.col_reg_num = atoi(tokenized_line.tokens[token_idx + 2] + 1);
+        int str_label_size = 0;
+        int i = 0;
+        while (tokenized_line.tokens[token_idx][str_label_size] != '[')
+            str_label_size++;
+        char str_label[str_label_size + 1];
+        while (i < str_label_size)
+        {
+            str_label[i] = tokenized_line.tokens[token_idx][i];
+            i++;
+        }
+        str_label[str_label_size] = '\0';
+
+        operand_to_parse->value.index.label = my_strdup(str_label);
+        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 2] - '0';
+        operand_to_parse->value.index.col_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
         printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
                operand_to_parse->value.index.col_reg_num);
-        break;
+    }
+    break;
     case NONE:
     {
         /*TODO: not entering*/
@@ -581,7 +685,8 @@ int is_valid_label_name(char *token)
     {
         if (!((token[i] >= 'A' && token[i] <= 'Z') ||
               (token[i] >= 'a' && token[i] <= 'z') ||
-              (token[i] >= '0' && token[i] <= '9')))
+              (token[i] >= '0' && token[i] <= '9') ||
+              (token[i] == '_')))
         {
             return false;
             /*handle error */
@@ -712,15 +817,22 @@ char *copy_label_token(char *token)
     return copy;
 }
 
-void insert_entry_label(Table *ent_table, char *label)
+void insert_entry_label(Table *ent_table, char *label, int address)
 {
     int *addr = malloc(sizeof(int));
-    *addr = -100;
+    if (!addr)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        return;
+    }
+
+    *addr = address; /* Store the value in allocated memory */
     table_insert(ent_table, label, addr);
 }
 
 void insert_extern_label(Table *ext_table, char *label, int address)
 {
+
     int *addr = malloc(sizeof(int));
     *addr = address;
     table_insert(ext_table, label, addr);

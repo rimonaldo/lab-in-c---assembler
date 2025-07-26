@@ -19,6 +19,9 @@ void print_symbol(const char *key, void *data)
     case SYMBOL_EXTERN:
         printf("EXTERN");
         break;
+    case SYMBOL_ENTRY:
+        printf("ENTRY");
+        break;
     default:
         printf("UNKNOWN");
         break;

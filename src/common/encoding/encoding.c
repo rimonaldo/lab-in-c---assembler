@@ -23,7 +23,6 @@
   } EncodedLine;
 */
 
-
 /* ----------------LOW-LEVEL BIT & MEMORY UTILITIES---------------- */
 /**
  * Converts a logical bit number (0-9) to its inverse array index for a 10-char array.
@@ -188,6 +187,7 @@ void encode_operand(AddressingMode op_mode, int *added_word_idx, EncodedLine *li
 
         /* First extra word is for the matrix label address (handled like DIRECT) */
         printf("Waiting for address for matrix label: %s\n", line->ast_node->content.instruction.src_op.value.label);
+        line->is_waiting_words[line->words_count] = 1;
         line->words_count++;
         (*added_word_idx)++;
 
@@ -327,15 +327,24 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
 
     /* For debugging: Print all generated words for the line */
     printf("Encoded words:\n");
+    print_encoded_words(encoded_line);
+    return encoded_line;
+}
+
+/**
+ * Prints the encoded words of an EncodedLine for debugging.
+ */
+void print_encoded_words(const EncodedLine *line)
+{
     int i, j;
-    for (i = 0; i < encoded_line->words_count; i++)
+    for (i = 0; i < line->words_count; i++)
     {
         printf("Word %d: ", i);
-        if (encoded_line->is_waiting_words[i] != 1)
+        if (line->is_waiting_words[i] != 1)
         {
             for (j = 0; j < 10; j++)
             {
-                printf("%c", encoded_line->words[i][j]);
+                printf("%c", line->words[i][j]);
             }
         }
         else
@@ -344,5 +353,14 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
         }
         printf("\n");
     }
-    return encoded_line;
+}
+
+void print_bincode(BinCode bincode)
+{
+    int i;
+
+    for (i = 0; i < 10; i++)
+    {
+        printf("%c", bincode[i]);
+    }
 }
