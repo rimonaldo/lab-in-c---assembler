@@ -78,7 +78,8 @@ int main(int argc, char *argv[])
         void *data_ptr = current->data;
         curr_info = (SymbolInfo *)data_ptr;
         strcpy(((SymbolInfo *)current->data)->name, current->key);
-        printf("%d\n", j++);
+        printf("%s\n", current->key);
+        j++;
         if (curr_info->type == SYMBOL_DATA)
         {
             curr_info->address += ICF;
@@ -102,7 +103,7 @@ int main(int argc, char *argv[])
     }
     printf("------------Starting 2nd pass------------\n");
 
-    run_second_pass(symbol_table, &ast_head,encoded_list, status_info);
+    run_second_pass(symbol_table, &ast_head, encoded_list,  status_info);
     /* fill addresses */
     /* traverse ast nodes.
         when operand is directly addressed
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
     /* Return success */
     return 0;
 }
+
 
 /*
  * Build the output file name with extension ".am" in the "output/" folder.
