@@ -331,6 +331,83 @@ EncodedLine *encode_instruction_line(ASTNode *inst_node, int leader_idx)
     return encoded_line;
 }
 
+EncodedLine *encode_directive_line(ASTNode *directive_node, int leader_idx)
+{
+    if (directive_node->content.directive.type == ENTRY || directive_node->content.directive.type == EXTERN)
+        return NULL;
+    int data_size;
+    data_size = directive_node->content.directive.params.data.size;
+    printf("----------- ENCODING LINE ----------- \n");
+
+    EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
+    encoded_line->ast_node = directive_node;
+    encoded_line->next = NULL;
+
+    if (!encoded_line)
+        return NULL;
+
+    int i;
+    switch (directive_node->content.directive.type)
+    {
+    case DATA:
+    {
+
+        encoded_line->words_count = data_size;
+        encoded_line->data_words = malloc(sizeof(BinCode) * data_size);
+
+        for (i = 0; i < encoded_line->words_count; i++)
+        {
+            int value = directive_node->content.directive.params.data.values[i];
+            printf("encoding integer %d\n", value);
+            BinCode data_word;
+            write_bits(encoded_line->data_words[i], value, 0, 9);
+            print_bincode(encoded_line->data_words[i]);
+        }
+        break;
+    }
+    break;
+    case STRING:
+    {
+
+        encoded_line->words_count = data_size;
+        encoded_line->data_words = malloc(sizeof(BinCode) * data_size);
+        printf("STR is: %s\n", directive_node->content.directive.params.str);
+        for (i = 0; i < data_size; i++)
+        {
+            int value = directive_node->content.directive.params.str[i];
+            printf("encoding integer %d\n", value);
+            BinCode data_word;
+            write_bits(encoded_line->data_words[i], value, 0, 9);
+            print_bincode(encoded_line->data_words[i]);
+        }
+        break;
+    }
+    break;
+    case MAT:
+    {
+
+        encoded_line->words_count = data_size;
+        encoded_line->data_words = malloc(sizeof(BinCode) * data_size);
+
+        for (i = 0; i < data_size; i++)
+        {
+            int value = directive_node->content.directive.params.data.values[i];
+            printf("encoding integer %d\n", value);
+            BinCode data_word;
+            write_bits(encoded_line->data_words[i], value, 0, 9);
+            print_bincode(encoded_line->data_words[i]);
+        }
+        break;
+    }
+    break;
+    default:
+        return NULL;
+    }
+
+    return encoded_line;
+    /* switch */
+}
+
 /**
  * Prints the encoded words of an EncodedLine for debugging.
  */
@@ -363,4 +440,5 @@ void print_bincode(BinCode bincode)
     {
         printf("%c", bincode[i]);
     }
+    printf("\n");
 }

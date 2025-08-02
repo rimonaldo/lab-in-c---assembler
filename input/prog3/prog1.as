@@ -1,26 +1,17 @@
-.extern EXT_DATA
-
-MAIN:            mov      M1[r2][r7],LENGTH 
+.entry LOOP 
+.entry LENGTH 
+.extern L3 
+.extern W 
+MAIN:            mov     M1[r2][r7],W 
     add  r2,STR 
-LOOP:   jmp  END 
+LOOP:   jmp  W 
     prn  #-5 
     sub  r1, r4 
-    inc  K 
-    mov  M1[r3][r3],r3 
-    add  r3, EXT_DATA
-    bne  LOOP 
-
-ENT_CODE: .entry ENT_CODE
-    add  r2,STR  
-
-ENT_DATA: .entry ENT_DATA
-    .data 5,7 
-
+    inc  K       
+                        mov  M1[r3][r3],r3 
+    bne  L3 
 END:    stop 
-STR:    .string  "abcdef"
+STR:    .string  "abcdef" 
 LENGTH:  .data  6,-9,15 
 K:    .data  22 
-M1:    .mat  [23][2]  1,2,3,4 
-
-
-.entry M1
+M1:       .mat [2][2]  1,2,3,4

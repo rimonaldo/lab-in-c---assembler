@@ -127,16 +127,18 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
         break;
         case DIRECTIVE_STATEMENT:
         {
+            EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
             PRINT_DIRECTIVE(leader);
             int pre_inc_DC = DC; /* Save DC before increment */
             char *label_token;
             /* Parse directive and update DC */
             ASTNode *node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
+
             if (node->status != SUCCESS)
                 break;
 
+            encoded_line = encode_directive_line(node, leader_idx);
             append_ast_node(head, &tail, node); /* Add node to AST */
-
             symbol_info->type = SYMBOL_DATA;
             symbol_info->is_entry = -1;
             symbol_info->is_extern = -1;
@@ -148,6 +150,20 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 {
                     insert_entry_label(ent_table, clean_label, symbol_info->address);
                     line_number++;
+                    if (encoded_line != NULL)
+                    {
+                        if (encoded_list->head == NULL)
+                        {
+                            encoded_list->head = encoded_line;
+                            encoded_list->tail = encoded_line;
+                        }
+                        else
+                        {
+                            encoded_list->tail->next = encoded_line;
+                            encoded_list->tail = encoded_line;
+                        }
+                        encoded_list->size++;
+                    }
                     continue;
                 }
                 int address = -100;
@@ -204,6 +220,21 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 else
                     printf("[Insert Error] Failed to insert label\n");
             }
+
+            if (encoded_line != NULL)
+            {
+                if (encoded_list->head == NULL)
+                {
+                    encoded_list->head = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                else
+                {
+                    encoded_list->tail->next = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                encoded_list->size++;
+            }
         }
         break;
         case INVALID_STATEMENT:
@@ -238,8 +269,9 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr)
 {
     const char *delimeter = ",";
-    int data_size = tokenized_line.count - (leader_idx + 1);
+    int data_size = tokenized_line.count - 1;
     int data_val_idx;
+    int data_count;
 
     DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
@@ -286,6 +318,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             {
                 values[i] = atoi(data_value_token);
                 /* increment data counter */
+                data_count++;
                 (*DC_ptr)++;
             }
         }
@@ -293,7 +326,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
 
         /* populate info fields */
         info->params.data.values = values;
-        info->params.data.size = data_size;
+        info->params.data.size = data_count;
     }
     break;
     case MAT:
@@ -367,7 +400,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         /* parese data values (integers), handling errors*/
         for (i = 0; i < data_size; i++)
         {
-            int mat_increment = 6;
+            int mat_increment = 2;
             int data_val_idx = leader_idx + 1 + i + mat_increment;
             char *data_value_token = tokenized_line.tokens[data_val_idx];
             int is_missing_val = strcmp(data_value_token, delimeter) == 0;
@@ -384,11 +417,12 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
                 info->status = ERR1;
                 break;
             }
-            else if (is_valid_number(data_value_token))
+            else if (is_valid_number(data_value_token) > 0)
             {
                 values[i] = atoi(data_value_token);
                 /* increment data counter */
             }
+            data_count++;
             (*DC_ptr)++;
         }
 
@@ -420,12 +454,24 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         }
 
         for (i = 0; i < str_len; i++)
+        {
+            data_count++;
             str_buffer[i] = data_val_token[i + 1];
+        }
+        data_count++;
 
         str_buffer[str_len] = '\0';
         (*DC_ptr) += str_len + 1;
         PRINT_DC(*DC_ptr);
         printf("string is: %s", str_buffer);
+        info->params.data.size = str_len + 1;
+        int k;
+        info->params.str = malloc(sizeof(char) * info->params.data.size);
+        for (k = 0; k < info->params.data.size; k++)
+        {
+            info->params.str[k] = str_buffer[k];
+        }
+        info->params.str[k] = '\0';
     }
     break;
     case ERROR_DIRECTIVE:
@@ -434,7 +480,9 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     break;
     }
 
-    info->params.data.size = data_size;
+    /*info->params.data.size = data_size;*/
+    printf("data size: %d\n", info->params.data.size);
+    data_count = 0;
     return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
 }
 
