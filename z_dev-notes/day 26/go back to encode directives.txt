@@ -1,0 +1,14 @@
+i completley missed that point that i need to also encode directives.
+
+.data
+    - encode integers
+    - two's complement on 10 bit
+    - -2^9 -> 2^9-1
+
+.string
+    - encode ascii values
+    - add 0 word to indicate string end
+
+.mat 
+    - encode integers
+    - if not initalized, encode zeros to fill 

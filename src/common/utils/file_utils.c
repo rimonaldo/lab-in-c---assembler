@@ -39,7 +39,6 @@ int extract_basename_no_ext(const char *input_path, char *output_basename, size_
 
 void make_output_path(const char *output_basename, char *output_path, size_t max_len)
 {
-    /* יוצרים נתיב כמו "output/<basename>.am" */
     snprintf(output_path, max_len, "output/%s.am", output_basename);
 }
 

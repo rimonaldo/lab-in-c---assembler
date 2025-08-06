@@ -1,0 +1,13 @@
+version ready to pull request from stable branch
+
+features:
+- tokenizer
+- pre-processor
+- first pass
+    - ast linked list, memory managed (free ast, can add free ast node)
+    - symbol table
+    - encoded list
+    - parsing to ast node 
+        - tokenized_line 
+        - statement recognition
+    - encoding process

@@ -1,0 +1,18 @@
+corrected mat parsing 
+    * its not done
+
+corrected entry symbols handling
+    * its not done
+
+memory seperation of data image and code image
+    IC init 100
+    DC init 0
+
+    run_first_pass
+    save ICF
+
+    for each symbol()=> type.data.type == data ? ++ICF : continue
+
+    * missing incrementing logic plan 
+    * symbol_table data as SymbolInfo => is not | saved or loaded | properly
+    

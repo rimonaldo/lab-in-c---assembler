@@ -6,6 +6,7 @@
 #include "macro_table.h"
 #include "../common/tokenizer/tokenizer.h"
 #include "../common/utils/file_utils.h"
+#include "../common/errors/errors.h"
 
 /*-----------------------------------------------------------
     Macro expansion pre-assembler module
@@ -16,7 +17,6 @@
     Constants and Globals
 --------------------------*/
 
-#define MAX_LINE_LEN 256
 #define MAX_MACRO_LINES 100
 
 /* Used to store the macro currently found (optional global) */
@@ -70,140 +70,170 @@ int macro_exists(const MacroTable *table, const char *name)
     Main Pre-Assembler API
 --------------------------*/
 
-int run_pre_assembler(const char *input_path)
+int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 {
+    FILE *input = NULL, *output = NULL;
     char line[MAX_LINE_LEN];
-    char macro_name_buffer[MAX_LINE_LEN];
-    char macro_code_buffer[MAX_MACRO_LINES][MAX_LINE_LEN];
-    int macro_code_line_count = 0;
-    MacroState m_state = M_OTHER;
-    Tokens tokenized_line;
-    MacroTable table;
+    char macro_name[MAX_LINE_LEN];
+    char macro_lines[MAX_LINES_PER_MACRO][MAX_LINE_LEN];
+    int macro_line_count = 0;
+    int line_number = 1;
 
-    FILE *input = NULL;
-    FILE *output = NULL;
+    MacroTable table;
+    MacroState state = M_OTHER;
+
     char base_name[PATH_MAX];
     char output_path[PATH_MAX];
 
     /* Initialize macro table */
     init_macro_table(&table);
 
-    /* Prepare output path based on input filename */
+    /* Prepare output path */
     if (extract_basename_no_ext(input_path, base_name, sizeof(base_name)) != 0)
     {
-        fprintf(stderr, "Error extracting basename from: %s\n", input_path);
+        fprintf(stderr, "❌ Failed to extract basename from: %s\n", input_path);
         return 1;
     }
 
     if (ensure_directory_exists("output") != 0)
     {
-        fprintf(stderr, "Error: cannot create or access 'output/' directory\n");
+        fprintf(stderr, "❌ Failed to create or access 'output/' directory\n");
         return 1;
     }
 
     make_output_path(base_name, output_path, sizeof(output_path));
 
-    /* Open input and output files */
+    /* Open files */
     input = fopen(input_path, "r");
     if (!input)
     {
-        fprintf(stderr, "Error: Cannot open %s for reading.\n", input_path);
+        fprintf(stderr, "❌ Cannot open file for reading: %s\n", input_path);
         return 1;
     }
 
     output = fopen(output_path, "w");
     if (!output)
     {
-        fprintf(stderr, "Error: Cannot open %s for writing.\n", output_path);
+        fprintf(stderr, "❌ Cannot open file for writing: %s\n", output_path);
         fclose(input);
         return 1;
     }
 
     printf("🔧 Preprocessing: %s → %s\n", input_path, output_path);
 
-    /* Process file line-by-line */
+    /* Process line by line */
     while (fgets(line, sizeof(line), input) != NULL)
     {
-        int i;
-        tokenized_line = tokenize_line(line);
+        Tokens tokens = tokenize_line(line);
 
-        if (tokenized_line.count == 0)
+        if (tokens.count == 0)
         {
             /* Preserve blank lines */
-            if (line[0] == '\n' || (line[0] == '\r' && line[1] == '\n'))
-            {
-                fputs(line, output);
-            }
+            fputs(line, output);
+            line_number++;
             continue;
         }
 
-        switch (m_state)
+        const char *first = tokens.tokens[0];
+
+        if (state == M_CODE)
         {
-        case M_CODE:
-            /* Collecting lines inside macro body */
-            if (is_macro_end(tokenized_line.tokens[0]))
+            if (is_macro_end(first))
             {
-                add_macro(&table, macro_name_buffer, macro_code_buffer, macro_code_line_count);
-                macro_code_line_count = 0;
-                macro_name_buffer[0] = '\0';
-                m_state = M_OTHER;
+                /* End of macro */
+                if (macro_line_count == 0)
+                    write_error_log(status_info, W404_MACRO_EMPTY, -line_number);
+
+                add_macro(&table, macro_name, macro_lines, macro_line_count);
+
+                macro_line_count = 0;
+                macro_name[0] = '\0';
+                state = M_OTHER;
             }
             else
             {
-                strncpy(macro_code_buffer[macro_code_line_count], line, MAX_LINE_LEN - 1);
-                macro_code_buffer[macro_code_line_count][MAX_LINE_LEN - 1] = '\0';
-                macro_code_line_count++;
-            }
-            break;
-
-        case M_OTHER:
-            /* Handle comments and macro declarations */
-            if (is_comment(tokenized_line.tokens[0]))
-            {
-                fputs(line, output);
-            }
-            else if (is_macro_start(tokenized_line.tokens[0]))
-            {
-                if (tokenized_line.count < 2)
+                /* Accumulate macro body */
+                if (macro_line_count < MAX_LINES_PER_MACRO)
                 {
-                    fprintf(stderr, "Error: Macro name missing after 'mcro'\n");
-                    break;
+                    strncpy(macro_lines[macro_line_count], line, MAX_LINE_LEN - 1);
+                    macro_lines[macro_line_count][MAX_LINE_LEN - 1] = '\0';
+                    macro_line_count++;
                 }
-
-                strncpy(macro_name_buffer, tokenized_line.tokens[1], MAX_LINE_LEN - 1);
-                macro_name_buffer[MAX_LINE_LEN - 1] = '\0';
-
-                if (macro_exists(&table, macro_name_buffer))
+                else
                 {
-                    fprintf(stderr, "Error: Macro '%s' redefined.\n", macro_name_buffer);
-                    break;
+                    write_error_log(status_info, E400_MACRO_UNDEFINED, line_number);
                 }
-
-                m_state = M_CODE;
-                macro_code_line_count = 0;
             }
-            else if (is_macro_end(tokenized_line.tokens[0]))
-            {
-                fprintf(stderr, "Error: Unexpected 'mcroend'\n");
-            }
-            else if (macro_exists(&table, tokenized_line.tokens[0]))
-            {
-                expand_macro(&table, tokenized_line.tokens[0], output);
-            }
-            else
-            {
-                fputs(line, output);
-            }
-            break;
-
-        default:
-            break;
         }
+        else if (state == M_OTHER)
+        {
+            if (is_comment(first))
+            {
+                fputs(line, output);
+            }
+            else if (is_macro_start(first))
+            {
+                if (tokens.count < 2 || is_macro_end(tokens.tokens[1]) || tokens.tokens[1][0] == '\0')
+                {
+                    write_error_log(status_info, W402_MACRO_UNNAMED, line_number);
+                    state = M_CODE;
+                    macro_line_count = 0;
+                    continue;
+                }
+
+                strncpy(macro_name, tokens.tokens[1], MAX_LINE_LEN - 1);
+                macro_name[MAX_LINE_LEN - 1] = '\0';
+
+                if (macro_exists(&table, macro_name))
+                {
+                    write_error_log(status_info, W403_MACRO_REDEFINED, line_number);
+                    continue;
+                }
+
+                macro_line_count = 0;
+                state = M_CODE;
+            }
+            else if (is_macro_end(first))
+            {
+                write_error_log(status_info, W402_MACRO_UNNAMED, line_number);
+            }
+            else if (macro_exists(&table, first))
+            {
+                Macro *macro = get_macro(&table, first);
+                if (macro->line_count == 0)
+                    write_error_log(status_info, W404_MACRO_EMPTY, line_number);
+
+                expand_macro(&table, first, output);
+            }
+            else
+            {
+                fputs(line, output);
+            }
+        }
+
+        line_number++;
     }
 
-    /* Cleanup */
     fclose(input);
     fclose(output);
-    print_macro_table(&table);
+
+    /* Optional: print valid macros only */
+    printf("\n📦 Macro Table:\n");
+    int i,j;
+    for (i = 0; i < table.count; i++)
+    {
+        Macro *macro = &table.macros[i];
+        if (macro->name[0] == '\0')
+            continue;
+
+        printf("Macro: %s\n", macro->name);
+        for ( j = 0; j < macro->line_count; j++)
+        {
+            printf("  Line %d: %s", j + 1, macro->lines[j]);
+        }
+        if (macro->line_count == 0)
+            printf("  (empty)\n");
+    }
+
     return 0;
 }

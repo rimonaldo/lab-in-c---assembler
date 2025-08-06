@@ -12,7 +12,9 @@
 
 #include <stdio.h>  /* For error printing (fprintf) */
 #include <stdlib.h> /* For dynamic memory allocation (malloc, free) */
+#include <string.h>
 #include "ast.h"
+#include "../tokenizer/tokenizer.h"
 
 /**
  * @brief Creates a new AST node for a machine instruction.
@@ -58,6 +60,7 @@ ASTNode *create_instruction_node(int line_num, const char *label, InstructionInf
     node->type = INSTRUCTION_STATEMENT;
     node->content.instruction = instruction; /* Copy the entire instruction struct */
 
+    node->status = instruction.status;
     /* 4. Return the new node */
     return node;
 }
@@ -70,7 +73,7 @@ ASTNode *create_instruction_node(int line_num, const char *label, InstructionInf
  * @param directive Structure containing all information about the directive.
  * @return ASTNode* Pointer to the newly created node, or NULL if memory allocation fails.
  */
-ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo directive)
+ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo *directive_info)
 {
     /* 1. Dynamically allocate memory for the new node */
     ASTNode *node = (ASTNode *)malloc(sizeof(ASTNode));
@@ -100,10 +103,27 @@ ASTNode *create_directive_node(int line_num, const char *label, DirectiveInfo di
 
     /* 3. Initialize directive-specific fields */
     node->type = DIRECTIVE_STATEMENT;
-    node->content.directive = directive; /* Copy the entire directive struct */
+    node->content.directive = *directive_info; /* Copy the entire directive struct */
 
+    node->status = directive_info->status;
     /* 4. Return the new node */
     return node;
+}
+
+void append_ast_node(ASTNode **head, ASTNode **tail, ASTNode *new_node)
+{
+    if (new_node)
+    {
+        if (*head == NULL)
+        {
+            *head = *tail = new_node;
+        }
+        else
+        {
+            (*tail)->next = new_node;
+            *tail = new_node;
+        }
+    }
 }
 
 /**
@@ -184,5 +204,70 @@ void free_directive_contents(DirectiveInfo *dir)
     case EXTERN:
     default:
         break;
+    }
+}
+
+AddressingMode get_mode(Tokens tokenized_line, int token_idx)
+{
+    char *value = tokenized_line.tokens[token_idx];
+    if (strcmp(value, "") == 0)
+        return NONE;
+    if (is_valid_mat_access(value))
+        return MAT_ACCESS;
+    else if (is_valid_number_operand(value))
+        return IMMEDIATE;
+    else if (is_valid_register(value))
+        return REGISTER;
+    else if (is_valid_label_name(value))
+        return DIRECT;
+    else
+    {
+        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
+        return DIRECT;
+    }
+}
+
+int expect_operands(Opcode opcode)
+{
+    switch (opcode)
+    {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+        return 2;
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+        return 1;
+    case 14:
+    case 15:
+        return 0;
+    default:
+        return -1;
+    }
+}
+
+const char *get_ad_mod_name(AddressingMode mode)
+{
+    switch (mode)
+    {
+    case IMMEDIATE:
+        return "IMMEDIATE";
+    case DIRECT:
+        return "DIRECT";
+    case MAT_ACCESS:
+        return "MAT_ACCESS";
+    case REGISTER:
+        return "REGISTER";
+    default:
+        return "NONE";
     }
 }

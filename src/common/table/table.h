@@ -18,18 +18,28 @@
 
 #include <stdbool.h> /* For the bool type */
 
+typedef struct TableNode
+{
+    char *key;              /* The key for this entry (string) */
+    void *data;             /* Pointer to the associated data */
+    struct TableNode *next; /* Pointer to the next node in the table */
+} TableNode;
+
 /*
  * An opaque pointer to the table structure.
  * The implementation details are hidden in table.c
  */
-typedef struct Table Table;
+typedef struct Table
+{
+    TableNode *head; /* Pointer to the first node in the list */
+} Table;
 
 /**
  * @brief Creates and initializes a new, empty table.
  *
  * @return A pointer to the newly created table, or NULL if memory allocation fails.
  */
-Table* table_create();
+Table *table_create();
 
 /**
  * @brief Destroys a table and frees all associated memory.
@@ -43,7 +53,7 @@ Table* table_create();
  * memory of the data stored in the table. If NULL, the
  * data pointers are not freed.
  */
-void table_destroy(Table* table, void (*free_data_func)(void*));
+void table_destroy(Table *table, void (*free_data_func)(void *));
 
 /**
  * @brief Inserts a new key-value pair into the table.
@@ -58,7 +68,7 @@ void table_destroy(Table* table, void (*free_data_func)(void*));
  * @return `true` if the insertion was successful, `false` otherwise (e.g., key
  * already exists, or memory allocation failed).
  */
-bool table_insert(Table* table, const char* key, void* data);
+bool table_insert(Table *table, const char *key, void *data);
 
 /**
  * @brief Looks up a key in the table.
@@ -67,7 +77,7 @@ bool table_insert(Table* table, const char* key, void* data);
  * @param key The key to look for.
  * @return A pointer to the data associated with the key if found, otherwise NULL.
  */
-void* table_lookup(Table* table, const char* key);
+void *table_lookup(Table *table, const char *key);
 
 /**
  * @brief Iterates over each entry in the table and applies a callback function.
@@ -81,6 +91,8 @@ void* table_lookup(Table* table, const char* key);
  * @param user_context A pointer to user data that will be passed to the callback
  * on each invocation.
  */
-void table_for_each(Table* table, void (*callback)(const char* key, void* data, void* user_context), void* user_context);
+void table_for_each(Table *table, void (*callback)(const char *key, void *data, void *user_context), void *user_context);
+
+void table_print(Table *table, void (*print_func)(const char *key, void *data));
 
 #endif /* TABLE_H */

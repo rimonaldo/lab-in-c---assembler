@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "macro_table.h"
+#include "../common/errors/errors.h"
 
 #define MAX_MACRO_NAME_LEN 31
 #define MAX_MACRO_LINES 100
@@ -10,7 +11,7 @@ void init_macro_table(MacroTable *table)
     table->count = 0;
 }
 
-int add_macro(MacroTable *table, const char *name, char lines[][MAX_LINE_LEN], int line_count)
+int add_macro(MacroTable *table, const char *name, char lines[MAX_LINES_PER_MACRO][MAX_LINE_LEN], int line_count)
 {
     printf("Adding macro: %s with %d lines\n", name, line_count);
 
@@ -51,7 +52,7 @@ int add_macro_line(MacroTable *table, const char *line)
     return 1; /*Success*/
 }
 
-const Macro *get_macro(const MacroTable *table, const char *name)
+const int get_macro_idx(const MacroTable *table, const char *name)
 {
     int i;
     for (i = 0; i < table->count; i++)
@@ -63,6 +64,28 @@ const Macro *get_macro(const MacroTable *table, const char *name)
             if (table->macros[i].line_count == 0)
             {
                 fprintf(stderr, "⚠️  Warning: Macro '%s' has no lines\n", table->macros[i].name);
+            }
+            return i;
+        }
+    }
+    return -1;
+}
+
+const Macro *get_macro(const MacroTable *table, const char *name)
+{
+    int i;
+    for (i = 0; i < table->count; i++)
+    {
+        /*
+        printf("\t🔍 🔍comparing %s with: %s\n", name, table->macros[i].name);
+            */
+        if (strcmp(table->macros[i].name, name) == 0)
+        {
+            if (table->macros[i].line_count == 0)
+            {
+                /*
+                fprintf(stderr, "⚠️  Warning: Macro '%s' has no lines\n", table->macros[i].name);
+                */
             }
             return &table->macros[i];
         }
@@ -79,13 +102,17 @@ void expand_macro(MacroTable *table, const char *name, FILE *output)
         {
             if (table->macros[i].line_count == 0)
             {
+                /*
                 printf("🔵 Macro '%s' is empty, expanding to nothing.\n", name);
+                */
                 return;
             }
 
             for (j = 0; j < table->macros[i].line_count; ++j)
             {
+                /*
                 printf("📝 Writing macro line to output: %s", table->macros[i].lines[j]);
+                */
                 fputs(table->macros[i].lines[j], output);
             }
             return;

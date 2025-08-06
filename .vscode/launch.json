@@ -7,8 +7,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/bin/am",
             "args": [
-                "src/pre_assembler/input.as"
-            ], // Or your test input file
+                "input/prog3/prog1.as",
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

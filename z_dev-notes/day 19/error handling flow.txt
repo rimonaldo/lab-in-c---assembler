@@ -1,0 +1,14 @@
+errors are handled through implicit testing embedded within the program’s logic, rather than through predefined test cases.
+
+the main program file will pass a StatusInfo struct through each major stage
+e.g:
+00_preprocessor(StatusInfo) -> 01_first pass(StatusInfo) -> 02_second pass(StatusInfo)
+
+
+if a test is failed, a request to write_error_log is called
+write_error_log is recieving error code parameter, and is fetching full ErrorInfo out of errors and warnings bank
+
+StatusInfo have error_count and warning_count fields,incremented for each error or warning written in log
+the program will not continue to next stage if the error count is over 0
+but it will continue to next stage if all of the items in error log are warnings 
+

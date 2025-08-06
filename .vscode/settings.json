@@ -9,6 +9,14 @@
         "ast.h": "c",
         "first_pass.h": "c",
         "preprocessor.h": "c",
-        "table.h": "c"
+        "table.h": "c",
+        "encoding.h": "c",
+        "stdlib.h": "c",
+        "ctype.h": "c",
+        "file_utils.h": "c",
+        "utils.h": "c",
+        "printer.h": "c",
+        "errors.h": "c",
+        "second_pass.h": "c"
     }
 }

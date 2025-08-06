@@ -2,93 +2,28 @@
 #include <stdio.h>
 #include <string.h>
 #include "first_pass.h"
-#include "../common/AST/ast.h"
-#include "../common/table/table.h"
-#include "../common/tokenizer/tokenizer.h"
 
-#ifdef DEBUG
-#define PRINT_DEBUG(fmt, ...)                                                           \
-    do                                                                                  \
-    {                                                                                   \
-        fprintf(stderr, "\033[1;90m[DEBUG]\033[0m %s:%d \033[3m%s()\033[0m: " fmt "\n", \
-                __FILE__, __LINE__, __func__, ##__VA_ARGS__);                           \
-    } while (0)
-#else
-#define PRINT_DEBUG(fmt, ...) \
-    do                        \
-    {                         \
-    } while (0)
-#endif
-
-/* --- Parsing Output Helpers --- */
-
-#define PRINT_LINE(n) printf("\n\033[1;36m╔════════════════════════════╗\n" \
-                             "║        [ Line %3d ]        ║\n"             \
-                             "╚════════════════════════════╝\033[0m\n",     \
-                             n)
-
-#define PRINT_RAW_LINE(s) printf("  \033[0;37mRaw Line     :\033[0m %s", s)
-#define PRINT_TOKEN(t) printf("  \033[0;32mToken        :\033[0m %s\n", t)
-#define PRINT_LABEL_FOUND(l) printf("  \033[1;33mLabel Found  :\033[0m %s\n", l)
-#define PRINT_LABEL_INSERT(l, a) printf("  \033[0;36mLabel Insert :\033[0m '%s' @ %d\n", l, a)
-#define PRINT_LABEL_EXISTS(l) printf("  \033[1;31mLabel Error  :\033[0m '%s' already exists\n", l)
-#define PRINT_INSTRUCTION(o) printf("  \033[1;35mInstruction  :\033[0m opcode = %d\n", o)
-#define PRINT_DIRECTIVE(s) printf("  \033[1;34mDirective    :\033[0m %s\n", s)
-#define PRINT_OPERAND(n, tok) printf("  \033[0;32mOperand %-5d:\033[0m %s\n", n, tok)
-#define PRINT_ADDR_MODE(s) printf("  \033[0;36mAddr. Mode   :\033[0m %s\n", s)
-
-/**
- * A custom implementation of strdup for debugging purposes.
- * It allocates memory with malloc and copies the string content.
- */
-char *my_strdup(const char *s)
+char *my_strdup(const char *s);
+char *trim_whitespace(char *str);
+void init_symbol_table()
 {
-    /* הקצאת זיכרון עבור המחרוזת החדשה + מקום לתו מסיים ('\0') */
-    char *new_str = malloc(strlen(s) + 1);
-
-    /* בדיקה שההקצאה הצליחה */
-    if (new_str == NULL)
-    {
-        return NULL;
-    }
-
-    /* העתקת תוכן המחרוזת המקורית למחרוזת החדשה */
-    strcpy(new_str, s);
-
-    return new_str;
 }
 
-char *trim_whitespace(char *str)
+/* -------------- MAIN DRIVER -------------- */
+void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info)
 {
-    static char trimmed[1024];
-    int i = 0, j = 0;
-    if (!str)
-    {
-        trimmed[0] = '\0';
-        return trimmed;
-    }
-    while (str[i] == ' ' || str[i] == '\t' || str[i] == '\n')
-        i++;
-    for (; str[i] != '\0'; i++)
-    {
-        if (str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
-            trimmed[j++] = str[i];
-    }
-    trimmed[j] = '\0';
-    return trimmed;
-}
-
-void run_first_pass(char *filename)
-{
-    int IC = 0, DC = 0;
-    Table *symbol_table = table_create();
+    /*BUG: LABEL: (blank) -> [new_line]: .directive | instruction => is not read properly*/
+    int is_label_declaration = 0;
+    int DC = 0;
+    Table *ext_table = table_create(), *ent_table = table_create();
     FILE *file = fopen(filename, "r");
-    char line[1024];
+    char line[1024]; /* move to machine definitions */
     int line_number = 1;
     Tokens tokenized_line;
     char *leader;
-    ASTNode *head = NULL;
     ASTNode *tail = NULL;
+    char *clean_label;
+    ErrorInfo err;
     if (!file)
     {
         perror("Error opening file");
@@ -100,101 +35,479 @@ void run_first_pass(char *filename)
     {
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
+        if (strlen(line) > MAX_LINE_LEN)
+            write_error_log(status_info, E701_MEMORY_LINE_CHAR_LIMIT, line_number);
 
         tokenized_line = tokenize_line(line);
+        int leader_idx = 0;
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
+        StatementType statement_type;
+        SymbolInfo *symbol_info = malloc(sizeof(SymbolInfo));
+        memset(symbol_info, 0, sizeof(SymbolInfo));
 
+        /* ignore non code lines */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
         {
             line_number++;
             continue;
         }
 
-        if (is_label_declare(leader))
+        /* inserts new label to symbol table as: clean_label | symbol_info */
+        /* moves leader token, keeps is_label_declaration flag */
+        if (is_symbol_declare(leader))
         {
+            is_label_declaration = 1;
             PRINT_LABEL_FOUND(leader);
-            if (!table_lookup(symbol_table, leader))
+            int is_declared = table_lookup(symbol_table, leader);
+
+            if (is_declared)
+                write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
+            else
             {
-                char clean_label[strlen(leader)];
+                clean_label = malloc(strlen(leader));
                 strncpy(clean_label, leader, strlen(leader) - 1);
                 clean_label[strlen(leader) - 1] = '\0';
-                if (table_insert(symbol_table, clean_label, IC))
-                    PRINT_LABEL_INSERT(clean_label, IC);
-                else
-                    printf("[Insert Error] Failed to insert label\n");
+
+                *symbol_info->name = clean_label;
             }
-            else
-                PRINT_LABEL_EXISTS(leader);
-            leader = tokenized_line.tokens[1];
+
+            /* move leader to next token */
+            leader = tokenized_line.tokens[++leader_idx];
             PRINT_TOKEN(leader);
         }
 
-        if (is_instruction_line(leader))
+        /* switch statetment type */
+        statement_type = get_statement_type(leader);
+        switch (statement_type)
         {
-            Opcode opcode = get_code(leader);
+        case INSTRUCTION_STATEMENT:
+        {
+
+            EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
+            Opcode opcode = get_opcode(leader);
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
-            new_node = parse_instruction_line(line_number, DC, tokenized_line);
-            if (new_node)
+            new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
+            if (!new_node)
+                break;
+            append_ast_node(head, &tail, new_node);
+
+            if (new_node->status != ERR1)
             {
-                if (head == NULL)
+                encoded_line = encode_instruction_line(new_node, leader_idx);
+                if (is_label_declaration >= 0)
                 {
-                    head = tail = new_node;
+                    symbol_info->type = SYMBOL_CODE;
+                    symbol_info->address = *IC;
+                    /* insert to table with *IC before Instruction increment as address */
+                    if (table_insert(symbol_table, clean_label, symbol_info))
+                        PRINT_LABEL_INSERT(clean_label, *IC);
+                    else
+                        printf("[Insert Error] Failed to insert label\n");
+
+                    is_label_declaration = -1;
+                }
+                /* increment instruction counter */
+                if (encoded_list->head == NULL)
+                {
+                    encoded_list->head = encoded_line;
+                    encoded_list->tail = encoded_line;
                 }
                 else
                 {
-                    tail->next = new_node;
-                    tail = new_node;
+                    encoded_list->tail->next = encoded_line;
+                    encoded_list->tail = encoded_line;
                 }
+                encoded_list->size++;
+
+                *IC += encoded_line->words_count;
             }
-            /* increment instruction counter */
-            IC++;
         }
-        else if (is_directive_line(leader))
+        break;
+        case DIRECTIVE_STATEMENT:
         {
+            EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
             PRINT_DIRECTIVE(leader);
-            ASTNode *new_node;
-            new_node = parse_directive_line(DC, tokenized_line);
-            if (head == NULL)
+            int pre_inc_DC = DC; /* Save DC before increment */
+            char *label_token;
+            /* Parse directive and update DC */
+            ASTNode *node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
+
+            if (node->status != SUCCESS)
+                break;
+
+            encoded_line = encode_directive_line(node, leader_idx);
+            append_ast_node(head, &tail, node); /* Add node to AST */
+            symbol_info->type = SYMBOL_DATA;
+            symbol_info->is_entry = -1;
+            symbol_info->is_extern = -1;
+
+            /* Handle .entry directive */
+            if (node->content.directive.type == ENTRY)
             {
-                head = tail = new_node;
+                int address = line_number;
+                if (is_label_declaration > 0)
+                {
+                    insert_entry_label(ent_table, clean_label, symbol_info->address);
+                    symbol_info->is_entry = 1;
+                    line_number++;
+                    if (encoded_line != NULL)
+                    {
+                        if (encoded_list->head == NULL)
+                        {
+                            encoded_list->head = encoded_line;
+                            encoded_list->tail = encoded_line;
+                        }
+                        else
+                        {
+                            encoded_list->tail->next = encoded_line;
+                            encoded_list->tail = encoded_line;
+                        }
+                        encoded_list->size++;
+                    }
+                    continue;
+                }
+
+                char *str_name = tokenized_line.tokens[leader_idx + 1];
+                label_token = malloc(strlen(tokenized_line.tokens[leader_idx + 1]));
+                strncpy(label_token, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
+
+                insert_entry_label(ent_table, label_token, address);
             }
-            else
+            /* Handle .extern directive */
+            else if (node->content.directive.type == EXTERN)
             {
-                tail->next = new_node;
-                tail = new_node;
+                /* Get the label token after directive */
+                char *token = tokenized_line.tokens[leader_idx + 1];
+                label_token = copy_label_token(token);
+                /* Add to extern table with pre_inc_dc address */
+                symbol_info->type = SYMBOL_EXTERN;
+                symbol_info->is_extern = 1;
+                insert_extern_label(ext_table, label_token, 0);
             }
-            /* increment data counter */
-            /* temporary, TODO token validation for each data token */
-            DC += tokenized_line.count - 1;
+
+            /* Insert label if declared or extern */
+            if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
+            {
+                if (symbol_info->type == SYMBOL_EXTERN)
+                    clean_label = label_token;
+                /* Warn if .entry or .extern used with label declaration */
+                if (is_label_declaration && (symbol_info->type == ENTRY || symbol_info->type == EXTERN))
+                    warn("entry or extern used in label declaration");
+
+                symbol_info->address = symbol_info->is_extern > 0 ? 0 : pre_inc_DC;
+
+                if (table_insert(symbol_table, clean_label, symbol_info))
+                    PRINT_LABEL_INSERT(clean_label, pre_inc_DC); /* Confirm insertion */
+                else
+                    printf("[Insert Error] Failed to insert label\n");
+            }
+
+            if (encoded_line != NULL)
+            {
+                if (encoded_list->head == NULL)
+                {
+                    encoded_list->head = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                else
+                {
+                    encoded_list->tail->next = encoded_line;
+                    encoded_list->tail = encoded_line;
+                }
+                encoded_list->size++;
+            }
         }
+        break;
+        case INVALID_STATEMENT:
+        {
+            /* handle error */
+            if (is_label_declaration > 0 && strcmp(leader, "") == 0)
+            {
+                continue;
+            }
+            write_error_log(status_info, E600_INSTRUCTION_NAME_INVALID, line_number);
+        }
+        break;
+        }
+
         line_number++;
     }
-    free_ast(head);
+
+    /* tables print */
+    printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
+    table_print(symbol_table, print_symbol);
+    printf("\n\033[1;36mEXTERN TABLE:\033[0m\n");
+    table_print(ext_table, print_extern);
+    printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
+    table_print(ent_table, print_entry);
+    printf("_____________________________________\n");
+
+    TableNode *curr = ent_table->head;
+    while (curr)
+    {
+        void *ent_data = table_lookup(symbol_table, curr->key);
+        SymbolInfo *ent_info = (SymbolInfo *)ent_data;
+        ent_info->is_entry = 1;
+        int *ref_line = (int *)curr->data;
+        ent_info->ref_line = *ref_line;
+        curr = curr->next;
+    }
+    int ICF = *IC + 1;
+
     fclose(file);
 }
 
-ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
+/* -------------- parsers -------------- */
+ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_idx, int *DC_ptr)
 {
+    const char *delimeter = ",";
+    int data_size = tokenized_line.count - 1;
+    int data_val_idx;
+    int data_count;
+
+    DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
+    if (!info)
+    {
+        printf("Failed to allocate DirectiveInfo\n");
+        return NULL;
+    }
+    info->status = SUCCESS;
+    info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
+
+    switch (info->type)
+    {
+    case DATA:
+    {
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
+        int i = 0;
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
+        {
+            data_val_idx = leader_idx + 1 + i;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
+            int err = -200;
+
+            /* if token was 2 (or more) adjacent ',' in a row */
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                info->status = ERR1;
+                values[i] = err;
+            }
+            else if (is_valid_number(data_value_token))
+            {
+                values[i] = atoi(data_value_token);
+                /* increment data counter */
+                data_count++;
+                (*DC_ptr)++;
+            }
+        }
+        PRINT_DC(*DC_ptr);
+
+        /* populate info fields */
+        info->params.data.values = values;
+        info->params.data.size = data_count;
+    }
+    break;
+    case MAT:
+    {
+        int i;
+        /* validate .mat directive format */
+        char size_row = tokenized_line.tokens[leader_idx + 2][0];
+        char size_col = tokenized_line.tokens[leader_idx + 2][3];
+
+        /* go over each char:
+        tokenized_line.tokens[leader_idx + 1] = '['
+        tokenized_line.tokens[leader_idx + 2] should be number
+        keep adding number chars untill hitting ]
+        skip white space, when hitting [, start adding chars to col as long as numbers and char is not ]*/
+        int j = 0;
+        if (tokenized_line.tokens[leader_idx + 1][0] != '[')
+        {
+            printf("INDEX NOT STARTING WITH [");
+            info->status = ERR1;
+        }
+
+        char size_row_buffer[4] = {0};
+        char size_col_buffer[4];
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && j < 4)
+        {
+            size_row_buffer[j] = tokenized_line.tokens[leader_idx + 2][j];
+            j++;
+        }
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("INDEX NOT ENDING WITH ]");
+        }
+        size_row_buffer[j] = '\0';
+        j++;
+        if (tokenized_line.tokens[leader_idx + 2][j] != '[')
+        {
+            printf("COL INDEX NOT STARTING WITH [");
+            info->status = ERR1;
+        }
+
+        int k = 0;
+        j++;
+        while (is_valid_num_char(tokenized_line.tokens[leader_idx + 2][j]) && k < 4)
+        {
+            size_col_buffer[k] = tokenized_line.tokens[leader_idx + 2][j];
+            k++;
+            j++;
+        }
+        size_col_buffer[k] = '\0';
+
+        if (tokenized_line.tokens[leader_idx + 2][j] != ']')
+        {
+            info->status = ERR1;
+            printf("COL INDEX NOT ENDING WITH ]");
+        }
+
+        /* adjust data count */
+        data_size = atoi(size_row_buffer) * atoi(size_col_buffer);
+
+        /* allocate values array */
+        int *values = malloc((sizeof(int)) * data_size);
+        if (!values)
+        {
+            printf("Failed to allocate values array\n");
+            free(info);
+            return NULL;
+        }
+
+        /* parese data values (integers), handling errors*/
+        for (i = 0; i < data_size; i++)
+        {
+            int mat_increment = 2;
+            int data_val_idx = leader_idx + 1 + i + mat_increment;
+            char *data_value_token = tokenized_line.tokens[data_val_idx];
+            int is_missing_val = strcmp(data_value_token, delimeter) == 0;
+
+            /*TODO: handle error , , empty value ERR CODE*/
+            int err = -200;
+
+            /* if token was 2 (or more) adjacent ',' in a row */
+            if (is_missing_val)
+            {
+                printf("ERROR: MISSING VALUE\n");
+                /* handle error */
+                values[i] = err;
+                info->status = ERR1;
+                break;
+            }
+            else if (is_valid_number(data_value_token) > 0)
+            {
+                values[i] = atoi(data_value_token);
+                /* increment data counter */
+            }
+            data_count++;
+            (*DC_ptr)++;
+        }
+
+        PRINT_DC(*DC_ptr);
+        /* populate info fields */
+        info->params.data.values = values;
+        info->params.data.size = data_size;
+    }
+    break;
+    case STRING:
+    {
+        int i;
+        int data_val_idx = leader_idx + 1;
+        char *data_val_token = tokenized_line.tokens[data_val_idx];
+        data_size = strlen(data_val_token);
+        char delimeter = '"';
+        int str_len = data_size - 2;
+        char *str_buffer = malloc(str_len + 1);
+        if (!str_buffer)
+        {
+            printf("ERROR: failed to allocate string buffer\n");
+            break;
+        }
+
+        if (data_size < 2 || data_val_token[0] != '"' || data_val_token[data_size - 1] != '"')
+        {
+            printf("ERROR: invalid string token: %s\n", data_val_token);
+            break;
+        }
+
+        for (i = 0; i < str_len; i++)
+        {
+            data_count++;
+            str_buffer[i] = data_val_token[i + 1];
+        }
+        data_count++;
+
+        str_buffer[str_len] = '\0';
+        (*DC_ptr) += str_len + 1;
+        PRINT_DC(*DC_ptr);
+        printf("string is: %s", str_buffer);
+        info->params.data.size = str_len + 1;
+        int k;
+        info->params.str = malloc(sizeof(char) * info->params.data.size);
+        for (k = 0; k < info->params.data.size; k++)
+        {
+            info->params.str[k] = str_buffer[k];
+        }
+        info->params.str[k] = '\0';
+    }
+    break;
+    case ERROR_DIRECTIVE:
+    {
+    }
+    break;
+    }
+
+    /*info->params.data.size = data_size;*/
+    printf("data size: %d\n", info->params.data.size);
+    data_count = 0;
+    return create_directive_node(line_num, tokenized_line.tokens[leader_idx], info);
+}
+
+ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_idx)
+{
+    /*TODO: memeset*/
     InstructionInfo info;
-    Opcode opcode = get_code(tokenized_line.tokens[0]);
+    Opcode opcode = get_opcode(tokenized_line.tokens[leader_idx]);
     int expected_num_op = expect_operands(opcode);
     info.opcode = opcode;
-
+    info.src_op.mode = NONE;
+    info.dest_op.mode = NONE;
+    info.status = SUCCESS;
     printf("--> Expected operands: %d\n", expected_num_op);
-
+    int operands_count = tokenized_line.count - (leader_idx + 2);
+    if (expected_num_op != operands_count)
+    {
+        /* handle error - wrong amount of operands (too few or too many)*/
+        return NULL;
+    }
     switch (expected_num_op)
     {
     case 1:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        parse_operand(&(info.dest_op), tokenized_line, 1);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
-        PRINT_OPERAND(1, tokenized_line.tokens[1]);
-        PRINT_OPERAND(2, tokenized_line.tokens[2]);
-        parse_operand(&(info.src_op), tokenized_line, 1);
-        parse_operand(&(info.dest_op), tokenized_line, 2);
+        PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
+        PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
+        info.status = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
         break;
     default:
         printf("--> No operands expected.\n");
@@ -204,27 +517,7 @@ ASTNode *parse_instruction_line(int line_num, int DC, Tokens tokenized_line)
     return create_instruction_node(line_num, NULL, info);
 }
 
-ASTNode *parse_directive_line(int line_num, Tokens tokenized_line)
-{
-    DirectiveInfo *info;
-    info = malloc(sizeof(DirectiveInfo));
-    if (!info)
-    {
-        printf("Failed to allocate DirectiveInfo\n");
-        return NULL;
-    }
-    info->type = DATA;
-    info->params.data.values = 2;
-    info->params.data.size = 1;
-    info->type = 0;
-    return create_directive_node(line_num, ".data", *info);
-}
-
-/*====================================================*/
-/*                 Operand Parsing Utils              */
-/*====================================================*/
-
-void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
 
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
@@ -239,45 +532,220 @@ void parse_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_i
         printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
         break;
     case DIRECT:
-    {
         operand_to_parse->value.label = my_strdup(tokenized_line.tokens[token_idx]);
         printf("Direct label: %s\n", operand_to_parse->value.label);
-    }
-    break;
+        break;
     case REGISTER:
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
-    case MAT:
-        operand_to_parse->value.index.label = my_strdup(tokenized_line.tokens[token_idx]);
-        operand_to_parse->value.index.reg_num = atoi(tokenized_line.tokens[token_idx + 1] + 1);
-        printf("Matrix label: %s, Register index: %d\n",
+    case MAT_ACCESS:
+    {
+
+        /* Parse matrix access: label[reg1][reg2] */
+        int str_label_size = 0;
+        int i = 0;
+        while (tokenized_line.tokens[token_idx][str_label_size] != '[')
+            str_label_size++;
+        char str_label[str_label_size + 1];
+        while (i < str_label_size)
+        {
+            str_label[i] = tokenized_line.tokens[token_idx][i];
+            i++;
+        }
+        str_label[str_label_size] = '\0';
+
+        operand_to_parse->value.index.label = my_strdup(str_label);
+        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 2] - '0';
+        operand_to_parse->value.index.col_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
+        printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
-               operand_to_parse->value.index.reg_num);
-        break;
-    default:
-        printf("Unknown operand mode.\n");
-        break;
+               operand_to_parse->value.index.row_reg_num,
+               operand_to_parse->value.index.col_reg_num);
     }
+    break;
+    case NONE:
+    {
+        /*TODO: not entering*/
+        /* handle error */
+        return ERR1;
+        printf("WE HAVE CASE NONE");
+    }
+    break;
+    }
+    return SUCCESS;
 }
 
-AddressingMode get_mode(Tokens tokenized_line, int token_idx)
+/* -------------- type vendors -------------- */
+StatementType get_statement_type(char *leader_token)
 {
-    char *value = tokenized_line.tokens[token_idx];
+    if (is_instruction_line(leader_token))
+        return INSTRUCTION_STATEMENT;
 
-    if (is_valid_mat_access(value))
-        return MAT_ACCESS;
-    else if (is_valid_number_operand(value))
-        return IMMEDIATE;
-    else if (is_valid_register(value))
-        return REGISTER;
-    else if (is_valid_label_name(value))
-        return DIRECT;
+    else if (is_directive_line(leader_token))
+        return DIRECTIVE_STATEMENT;
+
     else
+        return INVALID_STATEMENT;
+}
+
+DirectiveType get_directive_type(char *dir_token)
+{
+    if (strcmp(dir_token, ".data") == 0)
+        return DATA;
+    else if (strcmp(dir_token, ".string") == 0)
+        return STRING;
+    else if (strcmp(dir_token, ".mat") == 0)
+        return MAT;
+    else if (strcmp(dir_token, ".entry") == 0)
+        return ENTRY;
+    else if (strcmp(dir_token, ".extern") == 0)
+        return EXTERN;
+    else
+        return ERROR_DIRECTIVE;
+}
+
+Opcode get_opcode(char *opcode_token)
+{
+
+    PRINT_DEBUG("getting opcode\n");
+    int res;
+    if (strcmp(opcode_token, "mov") == 0)
+        return 0;
+    if (strcmp(opcode_token, "cmp") == 0)
+        return 1;
+    if (strcmp(opcode_token, "add") == 0)
+        return 2;
+    if (strcmp(opcode_token, "sub") == 0)
+        return 3;
+    if (strcmp(opcode_token, "lea") == 0)
+        return 4;
+    if (strcmp(opcode_token, "clr") == 0)
+        return 5;
+    if (strcmp(opcode_token, "not") == 0)
+        return 6;
+    if (strcmp(opcode_token, "inc") == 0)
+        return 7;
+    if (strcmp(opcode_token, "dec") == 0)
+        return 8;
+    if (strcmp(opcode_token, "jmp") == 0)
+        return 9;
+    if (strcmp(opcode_token, "bne") == 0)
+        return 10;
+    if (strcmp(opcode_token, "red") == 0)
+        return 11;
+    if (strcmp(opcode_token, "prn") == 0)
+        return 12;
+    if (strcmp(opcode_token, "jsr") == 0)
+        return 13;
+    if (strcmp(opcode_token, "rts") == 0)
+        return 14;
+    if (strcmp(opcode_token, "stop") == 0)
+        return 15;
+    return -1;
+}
+
+/* -------------- statement recognition -------------- */
+int is_directive_line(char *leader)
+{
+    char dir_prefix;
+    char *dir_name;
+
+    if (leader == NULL || strlen(leader) < 2)
     {
-        fprintf(stderr, "Warning: Unknown operand format: '%s'. Assuming DIRECT.\n", value);
-        return DIRECT;
+        return false;
     }
+
+    dir_prefix = leader[0];
+    dir_name = &leader[1];
+
+    if (dir_prefix != '.')
+        return false;
+
+    return is_valid_directive_name(leader);
+}
+
+int is_instruction_line(char *leader)
+{
+    Opcode opcode = get_opcode(leader);   /* get_code אמור להחזיר -1 אם לא חוקי */
+    return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
+}
+
+int is_comment_line(char *line)
+{
+    const char *trimmed;
+    if (!line)
+        return 0;
+    trimmed = trim_whitespace(line);
+    return trimmed[0] == ';';
+}
+
+int is_empty_line(Tokens tokens)
+{
+    const char *trimmed;
+    if (tokens.count == 0)
+        return 1;
+
+    trimmed = trim_whitespace(tokens.tokens[0]);
+    return trimmed[0] == '\0';
+}
+
+int is_symbol_declare(char *token)
+{
+    int len = strlen(token);
+    return (is_valid_label_name(token) && token[len - 1] == ':');
+}
+
+/* -------------- validators -------------- */
+int is_valid_label_name(char *token)
+{
+    int i;
+    int len;
+
+    if (!token)
+    {
+        /* handle error*/
+        return false;
+    }
+
+    len = strlen(token);
+
+    if (len == 0 || len > 31)
+    {
+        return false;
+        /* handle error*/
+    }
+
+    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
+          (token[0] >= 'a' && token[0] <= 'z')))
+    {
+        return false;
+        /* handle error */
+    }
+
+    for (i = 1; i < len - 1; i++)
+    {
+        if (!((token[i] >= 'A' && token[i] <= 'Z') ||
+              (token[i] >= 'a' && token[i] <= 'z') ||
+              (token[i] >= '0' && token[i] <= '9') ||
+              (token[i] == '_')))
+        {
+            return false;
+            /*handle error */
+        }
+    }
+
+    return true;
+}
+
+int is_valid_directive_name(char *directive)
+{
+    char *dir_name = directive + 1;
+    return (strcmp(dir_name, "data") == 0 ||
+            strcmp(dir_name, "string") == 0 ||
+            strcmp(dir_name, "mat") == 0 ||
+            strcmp(dir_name, "entry") == 0 ||
+            strcmp(dir_name, "extern") == 0);
 }
 
 int is_valid_number_operand(char *value)
@@ -363,6 +831,8 @@ int is_valid_register(char *value)
            value[2] == '\0';
 }
 
+/* -------------- ....... -------------- */
+
 const char *addressing_mode_name(AddressingMode mode)
 {
     switch (mode)
@@ -375,183 +845,52 @@ const char *addressing_mode_name(AddressingMode mode)
         return "REGISTER";
     case MAT_ACCESS:
         return "MAT_ACCESS";
+    case NONE:
+        return "NONE";
     default:
         return "UNKNOWN";
     }
 }
 
-/*====================================================*/
-/*                Label & Directive Utils             */
-/*====================================================*/
-
-int is_label_declare(char *token)
+char *copy_label_token(char *token)
 {
-    int len = strlen(token);
-    return (is_valid_label_name(token) && token[len - 1] == ':');
+    char *copy = malloc(strlen(token) + 1);
+    strcpy(copy, token);
+    return copy;
 }
 
-int is_valid_label_name(char *token)
+void insert_entry_label(Table *ent_table, char *label, int address)
 {
-    int i;
-    int len;
-
-    if (!token)
+    int *addr = malloc(sizeof(int));
+    if (!addr)
     {
-        /* handle error*/
-        return false;
+        fprintf(stderr, "Memory allocation failed\n");
+        return;
     }
 
-    len = strlen(token);
+    *addr = address; /* Store the value in allocated memory */
+    table_insert(ent_table, label, addr);
+}
 
-    if (len == 0 || len > 31)
+void insert_extern_label(Table *ext_table, char *label, int address)
+{
+
+    int *addr = malloc(sizeof(int));
+    *addr = address;
+    table_insert(ext_table, label, addr);
+}
+
+void set_directive_flags(ASTNode *node, SymbolInfo *info)
+{
+    info->type = SYMBOL_DATA;
+    info->is_entry = -1;
+    info->is_extern = -1;
+
+    if (node->content.directive.type == ENTRY)
+        info->is_entry = 1;
+    if (node->content.directive.type == EXTERN)
     {
-        return false;
-        /* handle error*/
+        info->type = SYMBOL_EXTERN;
+        info->is_extern = 1;
     }
-
-    if (!((token[0] >= 'A' && token[0] <= 'Z') ||
-          (token[0] >= 'a' && token[0] <= 'z')))
-    {
-        return false;
-        /* handle error */
-    }
-
-    for (i = 1; i < len - 1; i++)
-    {
-        if (!((token[i] >= 'A' && token[i] <= 'Z') ||
-              (token[i] >= 'a' && token[i] <= 'z') ||
-              (token[i] >= '0' && token[i] <= '9')))
-        {
-            return false;
-            /*handle error */
-        }
-    }
-
-    return true;
-}
-
-int is_instruction_line(char *leader)
-{
-    Opcode opcode = get_code(leader);     /* get_code אמור להחזיר -1 אם לא חוקי */
-    return (opcode >= 0 && opcode <= 15); /* כל אופקוד חוקי בתחום הזה */
-}
-
-Opcode get_code(char *str)
-{
-
-    PRINT_DEBUG("getting opcode\n");
-    int res;
-    if (strcmp(str, "mov") == 0)
-        return 0;
-    if (strcmp(str, "cmp") == 0)
-        return 1;
-    if (strcmp(str, "add") == 0)
-        return 2;
-    if (strcmp(str, "sub") == 0)
-        return 3;
-    if (strcmp(str, "lea") == 0)
-        return 4;
-    if (strcmp(str, "clr") == 0)
-        return 5;
-    if (strcmp(str, "not") == 0)
-        return 6;
-    if (strcmp(str, "inc") == 0)
-        return 7;
-    if (strcmp(str, "dec") == 0)
-        return 8;
-    if (strcmp(str, "jmp") == 0)
-        return 9;
-    if (strcmp(str, "bne") == 0)
-        return 10;
-    if (strcmp(str, "red") == 0)
-        return 11;
-    if (strcmp(str, "prn") == 0)
-        return 12;
-    if (strcmp(str, "jsr") == 0)
-        return 13;
-    if (strcmp(str, "rts") == 0)
-        return 14;
-    if (strcmp(str, "stop") == 0)
-        return 15;
-    return -1;
-}
-
-int is_directive_line(char *leader)
-{
-    char dir_prefix;
-    char *dir_name;
-
-    if (leader == NULL || strlen(leader) < 2)
-    {
-        return false;
-    }
-
-    dir_prefix = leader[0];
-    dir_name = &leader[1];
-
-    if (dir_prefix != '.')
-        return false;
-
-    return is_valid_directive_name(leader);
-}
-
-int is_valid_directive_name(char *directive)
-{
-    char *dir_name = directive + 1;
-    return (strcmp(dir_name, "data") == 0 ||
-            strcmp(dir_name, "string") == 0 ||
-            strcmp(dir_name, "mat") == 0 ||
-            strcmp(dir_name, "entry") == 0 ||
-            strcmp(dir_name, "extern") == 0);
-}
-
-/*====================================================*/
-/*                  Miscellaneous Utils               */
-/*====================================================*/
-
-int expect_operands(Opcode opcode)
-{
-    switch (opcode)
-    {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-    case 6:
-        return 2;
-    case 4:
-    case 5:
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-        return 1;
-    case 14:
-    case 15:
-        return 0;
-    default:
-        return -1;
-    }
-}
-
-int is_comment_line(char *line)
-{
-    const char *trimmed;
-    if (!line)
-        return 0;
-    trimmed = trim_whitespace(line);
-    return trimmed[0] == ';';
-}
-
-int is_empty_line(Tokens tokens)
-{
-    const char *trimmed;
-    if (tokens.count == 0)
-        return 1;
-
-    trimmed = trim_whitespace(tokens.tokens[0]);
-    return trimmed[0] == '\0';
 }
