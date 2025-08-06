@@ -146,9 +146,11 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             /* Handle .entry directive */
             if (node->content.directive.type == ENTRY)
             {
-                if (is_label_declaration >= 0)
+                int address = line_number;
+                if (is_label_declaration > 0)
                 {
                     insert_entry_label(ent_table, clean_label, symbol_info->address);
+                    symbol_info->is_entry = 1;
                     line_number++;
                     if (encoded_line != NULL)
                     {
@@ -166,29 +168,10 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                     }
                     continue;
                 }
-                int address = -100;
+
                 char *str_name = tokenized_line.tokens[leader_idx + 1];
-                strncpy(clean_label, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
-
-                *symbol_info->name = clean_label;
-
-                void *data = table_lookup(symbol_table, clean_label);
-                SymbolInfo *info = (SymbolInfo *)data;
-
-                if (info->name)
-                {
-                    info->is_entry = 1; /* Mark symbol as entry */
-                    address = DC;
-                }
-                else
-                {
-                    printf("Symbol %s not found yet\n", clean_label);
-                }
-                /* Get the label token after directive */
-                char *token = tokenized_line.tokens[leader_idx + 1];
-                label_token = copy_label_token(token);
-                /* Add to entry table with temp -100 address */
-                symbol_info->is_entry = 1;
+                label_token = malloc(strlen(tokenized_line.tokens[leader_idx + 1]));
+                strncpy(label_token, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
 
                 insert_entry_label(ent_table, label_token, address);
             }
@@ -260,6 +243,17 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
     printf("\n\033[1;36mENTRY TABLE:\033[0m\n");
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
+
+    TableNode *curr = ent_table->head;
+    while (curr)
+    {
+        void *ent_data = table_lookup(symbol_table, curr->key);
+        SymbolInfo *ent_info = (SymbolInfo *)ent_data;
+        ent_info->is_entry = 1;
+        int *ref_line = (int *)curr->data;
+        ent_info->ref_line = *ref_line;
+        curr = curr->next;
+    }
     int ICF = *IC + 1;
 
     fclose(file);

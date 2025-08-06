@@ -16,6 +16,7 @@ typedef struct SymbolInfo
     SymbolType type;
     int is_entry;
     int is_extern;
+    int ref_line;
 } SymbolInfo;
 
 #endif
