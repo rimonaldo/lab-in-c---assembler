@@ -46,7 +46,7 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
     while (curr_encoded_line)
     {
         ASTNode *curr_ast_node = curr_encoded_line->ast_node;
-        printf("line: %d\n", curr_ast_node->line_number);
+        /*printf("line: %d\n", curr_ast_node->line_number);*/
 
         if (curr_ast_node->type == INSTRUCTION_STATEMENT)
         {
@@ -110,7 +110,7 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
             data_word_count += data_size;
         }
 
-        printf("______________________\n");
+        /*printf("______________________\n");*/
         curr_encoded_line = curr_encoded_line->next;
     }
 

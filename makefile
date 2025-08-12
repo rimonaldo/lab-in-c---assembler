@@ -4,7 +4,8 @@ CC = gcc
 SRC_DIR := src
 BUILD_DIR := build
 BIN_DIR := bin
-OUT := $(BIN_DIR)/am
+OUT := $(BIN_DIR)/assembler
+
 
 # Source and object files
 SRC := $(shell find $(SRC_DIR) -name '*.c')
@@ -30,6 +31,10 @@ $(OUT): $(OBJ)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(OBJ) -o $@ $(LDFLAGS)
 
+bin/am: $(OBJS)
+	$(CC) $(OBJS) -o $@
+	chmod 755 $@
+	
 # Compile each source file
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)

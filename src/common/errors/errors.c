@@ -51,7 +51,7 @@ static const ErrorInfo error_table[] = {
 
 #define ERROR_TABLE_SIZE (sizeof(error_table) / sizeof(ErrorInfo))
 
-const ErrorInfo *get_error_log(ErrorCode code)
+ErrorInfo *get_error_log(ErrorCode code)
 {
     int i;
     for (i = 0; i < (int)ERROR_TABLE_SIZE; i++)
@@ -82,7 +82,7 @@ void print_errors(StatusInfo *status_info)
     }
 }
 
-const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number)
+ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number)
 {
     /* dynamicaly increase error log memory space when needed */
     if (status_info->error_count >= status_info->capacity)

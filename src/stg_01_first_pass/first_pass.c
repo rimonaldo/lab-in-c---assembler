@@ -9,6 +9,52 @@ void init_symbol_table()
 {
 }
 
+static char *dup_label_trim_colon(const char *s)
+{
+    size_t start = 0, end, len;
+    char *out;
+
+    if (s == NULL)
+        return NULL;
+
+    end = strlen(s);
+    /* trim trailing whitespace */
+    while (end > 0 && (s[end - 1] == ' ' || s[end - 1] == '\t' ||
+                       s[end - 1] == '\n' || s[end - 1] == '\r'))
+    {
+        end--;
+    }
+    /* trim one trailing ':' */
+    if (end > 0 && s[end - 1] == ':')
+    {
+        end--;
+        /* trim spaces just before the ':' (e.g., "LABEL :") */
+        while (end > 0 && (s[end - 1] == ' ' || s[end - 1] == '\t'))
+        {
+            end--;
+        }
+    }
+    /* trim leading whitespace (optional, but handy) */
+    while (s[start] == ' ' || s[start] == '\t')
+    {
+        start++;
+    }
+
+    if (end < start)
+        end = start; /* empty result */
+
+    len = end - start;
+    out = (char *)malloc(len + 1);
+    if (out == NULL)
+        return NULL;
+
+    /* copy + NUL */
+    if (len > 0)
+        memcpy(out, s + start, len);
+    out[len] = '\0';
+    return out;
+}
+
 /* -------------- MAIN DRIVER -------------- */
 void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC, EncodedList *encoded_list, StatusInfo *status_info)
 {
@@ -33,28 +79,30 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 
     while (fgets(line, sizeof(line), file))
     {
+        /* PRINTING */
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
+
+        /* TEST INPUT CONSTRAINS */
         if (strlen(line) > MAX_LINE_LEN)
             write_error_log(status_info, E701_MEMORY_LINE_CHAR_LIMIT, line_number);
 
+        /* LOOP VARIABLES */
         tokenized_line = tokenize_line(line);
         int leader_idx = 0;
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
         StatementType statement_type;
         SymbolInfo *symbol_info = malloc(sizeof(SymbolInfo));
-        memset(symbol_info, 0, sizeof(SymbolInfo));
 
-        /* ignore non code lines */
+        /* IGNORE NON CODE LINES */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
         {
             line_number++;
             continue;
         }
 
-        /* inserts new label to symbol table as: clean_label | symbol_info */
-        /* moves leader token, keeps is_label_declaration flag */
+        /* LABEL DECLARATION FLAG, LEADER TOKEN INCREMENT */
         if (is_symbol_declare(leader))
         {
             is_label_declaration = 1;
@@ -65,11 +113,15 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
             else
             {
-                clean_label = malloc(strlen(leader));
-                strncpy(clean_label, leader, strlen(leader) - 1);
-                clean_label[strlen(leader) - 1] = '\0';
-
-                *symbol_info->name = clean_label;
+                clean_label = dup_label_trim_colon(leader);
+                if (clean_label == NULL)
+                {
+                    /* handle OOM */
+                }
+                else
+                {
+                    *symbol_info->name = clean_label; /* NOTE: no '*' deref */
+                }
             }
 
             /* move leader to next token */
@@ -77,10 +129,12 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             PRINT_TOKEN(leader);
         }
 
-        /* switch statetment type */
+        /* SWITCH STATEMENTS */
         statement_type = get_statement_type(leader);
         switch (statement_type)
         {
+        /* PARSE LINE, ENCODE LINE WORDS, LABEL ->SYMBOL_TABLE INSERT, AST APPEND
+        ENCODED_LIST INSERT, IC INCREMENT */
         case INSTRUCTION_STATEMENT:
         {
 
@@ -91,11 +145,14 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
             if (!new_node)
                 break;
+
             append_ast_node(head, &tail, new_node);
 
             if (new_node->status != ERR1)
             {
                 encoded_line = encode_instruction_line(new_node, leader_idx);
+
+                /* SYMBOL_TABLE INSERTION, IC++ */
                 if (is_label_declaration >= 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
@@ -108,7 +165,8 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 
                     is_label_declaration = -1;
                 }
-                /* increment instruction counter */
+
+                /* ENCODED LIST INSERTION */
                 if (encoded_list->head == NULL)
                 {
                     encoded_list->head = encoded_line;
@@ -121,13 +179,17 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 }
                 encoded_list->size++;
 
+                /* IC INCREMENT */
                 *IC += encoded_line->words_count;
             }
         }
         break;
+        /* PARSE, ENCODE DATA WORDS, DC INCREMENT, AST APPEND,
+        ENT & EXT HANDLE, LABEL or EXT ->SYMBOL TABLE INSERT, ENCODED LINE INSERT */
         case DIRECTIVE_STATEMENT:
         {
             EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
+            /* PRINTS */
             PRINT_DIRECTIVE(leader);
             int pre_inc_DC = DC; /* Save DC before increment */
             char *label_token;
@@ -137,13 +199,16 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             if (node->status != SUCCESS)
                 break;
 
+            /* ENCODE DATA WORDS, DC INCREMENT */
             encoded_line = encode_directive_line(node, leader_idx);
-            append_ast_node(head, &tail, node); /* Add node to AST */
+
+            /* AST APPEND */
+            append_ast_node(head, &tail, node);
             symbol_info->type = SYMBOL_DATA;
             symbol_info->is_entry = -1;
             symbol_info->is_extern = -1;
 
-            /* Handle .entry directive */
+            /* ENTRY & EXTERN HANDLE */
             if (node->content.directive.type == ENTRY)
             {
                 int address = line_number;
@@ -175,7 +240,6 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 
                 insert_entry_label(ent_table, label_token, address);
             }
-            /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
             {
                 /* Get the label token after directive */
@@ -187,7 +251,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 insert_extern_label(ext_table, label_token, 0);
             }
 
-            /* Insert label if declared or extern */
+            /* IF LABEL OR EXTERN ->TABLE INSERT */
             if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
             {
                 if (symbol_info->type == SYMBOL_EXTERN)
@@ -204,6 +268,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                     printf("[Insert Error] Failed to insert label\n");
             }
 
+            /* ENCODED LINE LIST INSERT */
             if (encoded_line != NULL)
             {
                 if (encoded_list->head == NULL)
@@ -232,6 +297,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
         break;
         }
 
+        /* NEXT LINE */
         line_number++;
     }
 

@@ -11,7 +11,7 @@ typedef enum
 {
     SUCCESS = 500,
     ERR1,
-    ERR2,
+    ERR2
 } Status;
 
 typedef enum
