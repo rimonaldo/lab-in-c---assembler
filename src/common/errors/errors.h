@@ -49,8 +49,9 @@ typedef enum
     E700_MEMORY_PROGRAM_WORD_LIMIT = 700, /* Program exceeds machine memory (e.g., 256 words) */
     E701_MEMORY_LINE_CHAR_LIMIT,          /* Source line exceeds 80 characters */
     E702_MEMORY_STACK_OVERFLOW_RISK,      /* Stack overflow risk detected */
-    W703_MEMORY_UNUSED_DATA               /* Unused .data/.mat values (extra initializers) */
+    W703_MEMORY_UNUSED_DATA,               /* Unused .data/.mat values (extra initializers) */
 
+    SUCCESS_100 = 100
 } ErrorCode;
 
 typedef struct

@@ -216,7 +216,7 @@ AddressingMode get_mode(Tokens tokenized_line, int token_idx)
         return MAT_ACCESS;
     else if (is_valid_number_operand(value))
         return IMMEDIATE;
-    else if (is_valid_register(value))
+    else if (value[0]=='r')
         return REGISTER;
     else if (is_valid_label_name(value))
         return DIRECT;

@@ -28,12 +28,15 @@ int is_valid_register(char *value);
 int is_valid_label_name(char *token);
 int is_comment_line(char *token);
 int is_empty_line(Tokens tokens);
-
+int is_reserved_label_name(const char *s);
+int ends_with_comma(const char *line);
 char *copy_label_token(char *token);
 void insert_entry_label(Table *ent_table, char *label, int address);
 void insert_extern_label(Table *ext_table, char *label, int address);
 void set_directive_flags(ASTNode *node, SymbolInfo *info);
-
+int is_valid_immediate_token(const char *tok);
+int is_in_bound_immediate_token(const char *tok);
+is_immediate_float_token(const char *tok);
 /* GETTER FUNCTIONS */
 StatementType get_statement_type(char *leader);
 DirectiveType get_directive_type(char *dir);
@@ -41,6 +44,6 @@ Opcode get_opcode(char *str);
 
 const char *addressing_mode_name(AddressingMode mode);
 
-Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
+ErrorCode parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
 
 #endif

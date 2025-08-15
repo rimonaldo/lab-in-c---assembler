@@ -22,21 +22,13 @@ int main(int argc, char *argv[])
     status_info->error_log = malloc(sizeof(ErrorInfo) * 10);
     status_info->capacity = 10;
     status_info->warning_count = 0;
-    /*
-     * Extract the basename of the file (without path):
-     * If input is "path/to/file.asm", we want just "file.asm"
-     * strrchr finds the last '/' in the string
-     */
+
     const char *basename = strrchr(input_filename, '/');
     if (basename != NULL)
         basename++; /* Skip the '/' */
     else
         basename = input_filename;
 
-    /*
-     * Prepare destination buffer for the expanded file name:
-     * This will become: "output/file.am"
-     */
     char expanded_filename[1024];
     generate_expanded_filename(expanded_filename, sizeof(expanded_filename), basename);
 
@@ -78,62 +70,59 @@ int main(int argc, char *argv[])
         void *data_ptr = current->data;
         curr_info = (SymbolInfo *)data_ptr;
         strcpy(((SymbolInfo *)current->data)->name, current->key);
-        printf("%s\n", current->key);
         j++;
         if (curr_info->type == SYMBOL_DATA)
         {
+            printf("%s\n", current->key);
             curr_info->address += ICF;
-            printf("new addy: %d\n", curr_info->address);
+            printf("--> moving data symbol to data image\nnew address: %d\n\n", curr_info->address);
         }
 
         current = current->next;
     }
     /* close and release memory */
+
     if (status_info->error_count > 0)
     {
-        printf("Did not pass first_pass stage\n");
+        int i; 
+
         printf("Error count: %d\n", status_info->error_count);
         printf("Warning count: %d\n", status_info->warning_count);
-        int i = 0;
+        printf("Did not pass first_pass stage\n");
+
         for (i = 0; i < status_info->error_count; i++)
         {
-            printf("Line: %d\n", status_info->error_log[i].line_number);
+            if (status_info->error_log[i].sevirity == SEV_ERROR)
+            {
+                printf("\033[1;31mLine: %d: %s\033[0m\n",
+                       status_info->error_log[i].line_number,
+                       status_info->error_log[i].message); /* Red */
+            }
+            else if (status_info->error_log[i].sevirity == SEV_WARNING)
+            {
+                printf("\033[1;33mLine: %d: %s\033[0m\n",
+                       status_info->error_log[i].line_number,
+                       status_info->error_log[i].message); /* Yellow */
+            }
+            else
+            {
+                printf("Line: %d: %s\n",
+                       status_info->error_log[i].line_number,
+                       status_info->error_log[i].message);
+            }
         }
         return 0;
     }
-    printf("------------Starting 2nd pass------------\n");
+    printf("\033[1;32m------------ Starting 2nd pass ------------\033[0m\n\n");
 
-    run_second_pass(symbol_table, &ast_head, encoded_list,  status_info);
-    /* fill addresses */
-    /* traverse ast nodes.
-        when operand is directly addressed
-        look up in symbol table
-        found ? encode [address and ARE] : write error */
+    run_second_pass(symbol_table, &ast_head, encoded_list, status_info);
 
-    /* create .ent .ext and .obj */
-
-    /* Return success */
     return 0;
 }
 
 
-/*
- * Build the output file name with extension ".am" in the "output/" folder.
- * - 'dest' is the destination buffer
- * - 'dest_size' is the size of that buffer
- * - 'basename' is a filename like "file.asm" (not including directory)
- *
- * The function removes the extension and adds ".am" instead.
- */
 void generate_expanded_filename(char *dest, size_t dest_size, const char *basename)
 {
-    /*
-     * strrchr(basename, '.') returns pointer to last dot in filename
-     * If there is a dot, we truncate before it.
-     * Else, we take full length of basename.
-     *
-     * snprintf ensures we do not overflow the destination buffer.
-     */
     snprintf(dest, dest_size, "output/%.*s.am",
              (int)(strrchr(basename, '.') ? strrchr(basename, '.') - basename : strlen(basename)),
              basename);

@@ -30,7 +30,7 @@ static const ErrorInfo error_table[] = {
     {E602_INSTRUCTION_TRAILING_CHARS, "Unexpected characters after valid instruction", UNINIT_LINE_NUM},
     {E603_INSTRUCTION_ADDRESSING_MODE_INVALID, "Illegal addressing mode for instruction", UNINIT_LINE_NUM},
 
-    {E610_OPERAND_IMMEDIATE_INVALID, "Invalid immediate value syntax (e.g., missing '#')", UNINIT_LINE_NUM},
+    {E610_OPERAND_IMMEDIATE_INVALID, "Invalid immediate value syntax ", UNINIT_LINE_NUM},
     {E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS, "Immediate value out of range (-512 to +511)", UNINIT_LINE_NUM},
     {E612_OPERAND_IMMEDIATE_FLOAT, "Immediate value cannot be a float", UNINIT_LINE_NUM},
 
