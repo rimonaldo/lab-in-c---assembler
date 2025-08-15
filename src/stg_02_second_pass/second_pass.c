@@ -7,6 +7,35 @@
 
 #define MAX_LABEL_SIZE 32
 
+int bincode_to_int(BinCode bincode)
+{
+  int res = 0;
+    int i;
+    int weight = 1;            /* 2^0 */
+    for (i = 9; i >= 0; --i) { /* rightmost is LSB */
+        if (bincode[i] == '1') res += weight;
+        weight *= 2;           /* next power of 2 */
+    }
+    return res & 0x3FF;        /* keep 10 bits */
+}
+
+int bincode_to_signed(BinCode bincode)
+{
+    int res = 0;
+    int i, weight = 1;              /* 2^0 */
+
+    /* rightmost char (index 9) is LSB */
+    for (i = 9; i >= 0; --i) {
+        if (bincode[i] == '1') res += weight;
+        weight <<= 1;               /* next power of 2 */
+    }
+
+    /* two's-complement for 10-bit word: if sign bit set, subtract 1024 */
+    if (res & 0x200) res -= 0x400;
+
+    return res;
+}
+
 /* Convert unsigned 8-bit address (0–255) into 4-char base-4 string using 'a'–'d' */
 void addr_to_base4(unsigned char value, char out[5])
 {
@@ -20,17 +49,36 @@ void addr_to_base4(unsigned char value, char out[5])
     out[4] = '\0';
 }
 
-void bincode_to_base4(signed char value, char out[4])
+void bincode_to_base4(unsigned int value, char out[6])
 {
-    static const char map[4] = {'a', 'b', 'c', 'd'};
-    unsigned short bits = (unsigned short)value;
+    static const char map[4] = {'a','b','c','d'};
+    unsigned int w = value & 0x3FF;  /* keep 10 bits */
+    out[0] = map[(w >> 8) & 3];
+    out[1] = map[(w >> 6) & 3];
+    out[2] = map[(w >> 4) & 3];
+    out[3] = map[(w >> 2) & 3];
+    out[4] = map[(w >> 0) & 3];
+    out[5] = '\0';
+}
 
+void bincode_to_signed_base4(int value, char out[6])
+{
+    static const char map[4] = {'a','b','c','d'};
+    unsigned int w = (unsigned int)value & 0x3FF;
+    out[0] = map[(w >> 8) & 3];
+    out[1] = map[(w >> 6) & 3];
+    out[2] = map[(w >> 4) & 3];
+    out[3] = map[(w >> 2) & 3];
+    out[4] = map[w & 3];
+    out[5] = '\0';
+}
+
+
+void word10_to_base4(int word10, char out[6])
+{
+    unsigned int u = (unsigned int)word10 & 0x3FF;
     int i;
-    for (i = 0; i < 5; ++i)
-    {
-        int shift = 8 - 2 * i;
-        out[i] = map[(bits >> shift) & 0x3];
-    }
+    for (i = 4; i >= 0; --i) { out[i] = (char)('a' + (u & 3)); u >>= 2; }
     out[5] = '\0';
 }
 
@@ -142,7 +190,8 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
             {
 
                 addr_to_base4(address, base4_add);
-                bincode_to_base4((signed char)curr_encoded_line->words[i], base4_code);
+                int code_to_write = bincode_to_int(curr_encoded_line->words[i]);
+                bincode_to_base4(code_to_write, base4_code);
                 fprintf(fp, "%03s\t%s\n", base4_add, base4_code);
 
                 /* If this word is an extern reference, log it */
@@ -170,7 +219,8 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
             for (i = 0; i < data_size; i++)
             {
                 addr_to_base4(address, base4_add);
-                bincode_to_base4((signed char)curr_encoded_line->words[i], base4_code);
+                int code_to_write = bincode_to_signed(curr_encoded_line->data_words[i]);
+                bincode_to_signed_base4(code_to_write, base4_code);
                 fprintf(fp, "%s\t%s\n", base4_add, base4_code);
                 address++;
             }
