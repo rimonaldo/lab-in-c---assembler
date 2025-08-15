@@ -46,7 +46,11 @@ clean:
 
 # Run the assembler on all or specific programs
 run: all
+	$(MAKE) clean
+	$(MAKE) SANITIZE=0
+	@echo "✅ Debug binary ready: $(OUT)"
 	@mkdir -p output
+
 ifeq ($(PROG),)
 	@echo "🔁 Running on all programs in input/* ..."
 	@find input -type f -name '*.as' | while read f; do \
