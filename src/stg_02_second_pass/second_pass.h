@@ -8,7 +8,7 @@
 #include "../common/symbols/symbols.h"
 
 
-void run_second_pass(Table *symbol_table, ASTNode **ast_head,EncodedList *encoded_list, StatusInfo status_info);
+void run_second_pass(Table *symbol_table, ASTNode **ast_head,EncodedList *encoded_list, StatusInfo *status_info);
 
 
 #endif

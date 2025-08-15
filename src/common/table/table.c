@@ -82,6 +82,7 @@ bool table_insert(Table *table, const char *key, void *data)
 {
     TableNode *new_node;
 
+
     if (table == NULL || key == NULL)
     {
         return false;

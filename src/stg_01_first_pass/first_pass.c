@@ -169,7 +169,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 encoded_line = encode_instruction_line(new_node, leader_idx);
 
                 /* SYMBOL_TABLE INSERTION, IC++ */
-                if (is_label_declaration >= 0)
+                if (is_label_declaration > 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
                     symbol_info->address = *IC;
@@ -177,7 +177,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                     if (table_insert(symbol_table, clean_label, symbol_info))
                         PRINT_LABEL_INSERT(clean_label, *IC);
                     else
-                        printf("[Insert Error] Failed to insert label\n");
+                        write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
 
                     is_label_declaration = -1;
                 }
@@ -268,7 +268,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             }
 
             /* IF LABEL OR EXTERN ->TABLE INSERT */
-            if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
+            if (is_label_declaration>0 || symbol_info->is_extern>0 )
             {
                 if (symbol_info->type == SYMBOL_EXTERN)
                     clean_label = label_token;
@@ -281,7 +281,9 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 if (table_insert(symbol_table, clean_label, symbol_info))
                     PRINT_LABEL_INSERT(clean_label, pre_inc_DC); /* Confirm insertion */
                 else
-                    printf("[Insert Error] Failed to insert label\n");
+                {
+                    write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
+                }
             }
 
             /* ENCODED LINE LIST INSERT */
@@ -332,6 +334,12 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
     {
         void *ent_data = table_lookup(symbol_table, curr->key);
         SymbolInfo *ent_info = (SymbolInfo *)ent_data;
+        if(!ent_data){
+            EntryInfo *ent =  (EntryInfo *)curr->data;
+            write_error_log(status_info, W505_LABEL_ENTRY_NOT_FOUND ,ent->address);
+            curr = curr->next;
+            continue;
+        }
         ent_info->is_entry = 1;
         int *ref_line = (int *)curr->data;
         ent_info->ref_line = *ref_line;
@@ -591,7 +599,8 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
         PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
         info.error_code = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
         ErrorCode dest_error_code = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
-        if(info.error_code == SUCCESS_100){
+        if (info.error_code == SUCCESS_100)
+        {
             info.error_code = dest_error_code;
         }
         break;
@@ -670,8 +679,8 @@ ErrorCode parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
                operand_to_parse->value.index.col_reg_num);
-        memset(row_reg,0,0);
-        memset(col_reg,0,0);
+        memset(row_reg, 0, 0);
+        memset(col_reg, 0, 0);
     }
     break;
     case NONE:
@@ -1090,15 +1099,17 @@ char *copy_label_token(char *token)
 
 void insert_entry_label(Table *ent_table, char *label, int address)
 {
-    int *addr = malloc(sizeof(int));
-    if (!addr)
-    {
+
+
+    EntryInfo *entry = malloc(sizeof(EntryInfo));
+    if (!entry) {
         fprintf(stderr, "Memory allocation failed\n");
         return;
     }
+    entry->address = address;
+    entry->label = strdup(label);
 
-    *addr = address; /* Store the value in allocated memory */
-    table_insert(ent_table, label, addr);
+    table_insert(ent_table, label, entry);
 }
 
 void insert_extern_label(Table *ext_table, char *label, int address)

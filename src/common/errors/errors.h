@@ -21,11 +21,10 @@ typedef enum
     E501_LABEL_RESERVED,           /* Label is reserved keyword */
     E502_LABEL_REDEFINED,          /* Duplicate label in same file */
     E503_LABEL_UNDEFINED,          /* Label used but never defined */
-    E504_LABEL_FORWARD_UNDEFINED,  /* Label referenced before definition and never resolved */
-    E505_LABEL_ENTRY_NOT_FOUND,    /* .entry label not defined in file */
-    E506_LABEL_ENTRY_AND_EXTERN,   /* Label declared as both .entry and .extern */
-    W507_LABEL_ON_ENTRY_OR_EXTERN, /* Label before .entry/.extern directive */
-    W508_LABEL_UNUSED,             /* Label defined but never used */
+    E504_LABEL_ENTRY_AND_EXTERN,   /* Label declared as both .entry and .extern */
+    W505_LABEL_ENTRY_NOT_FOUND,    /* .entry label not defined in file */
+    W506_LABEL_ON_ENTRY_OR_EXTERN, /* Label before .entry/.extern directive */
+    W507_LABEL_UNUSED,             /* Label defined but never used */
 
     /* ────────────────[ 600–699: Instruction & Operand Errors ]────────── */
     E600_INSTRUCTION_NAME_INVALID = 600,      /* Unrecognized instruction name */

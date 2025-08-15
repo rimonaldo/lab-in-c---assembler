@@ -18,11 +18,10 @@ static const ErrorInfo error_table[] = {
     {E501_LABEL_RESERVED, "Label name is reserved (e.g., instruction or directive name)", UNINIT_LINE_NUM},
     {E502_LABEL_REDEFINED, "Label redefined in the same file", UNINIT_LINE_NUM},
     {E503_LABEL_UNDEFINED, "Undefined label used in operand", UNINIT_LINE_NUM},
-    {E504_LABEL_FORWARD_UNDEFINED, "Forward-referenced label was never defined", UNINIT_LINE_NUM},
-    {E505_LABEL_ENTRY_NOT_FOUND, ".entry label is not defined within the file", UNINIT_LINE_NUM},
-    {E506_LABEL_ENTRY_AND_EXTERN, "Label declared as both .entry and .extern", UNINIT_LINE_NUM},
-    {W507_LABEL_ON_ENTRY_OR_EXTERN, "Label defined on a line with .entry/.extern (ignored)", UNINIT_LINE_NUM, SEV_WARNING},
-    {W508_LABEL_UNUSED, "Label defined but never used", UNINIT_LINE_NUM, SEV_WARNING},
+    {E504_LABEL_ENTRY_AND_EXTERN, "Label declared as both .entry and .extern", UNINIT_LINE_NUM},
+    {W505_LABEL_ENTRY_NOT_FOUND, ".entry label is not found within the file", UNINIT_LINE_NUM,SEV_WARNING},
+    {W506_LABEL_ON_ENTRY_OR_EXTERN, "Label defined on a line with .entry/.extern (ignored)", UNINIT_LINE_NUM, SEV_WARNING},
+    {W507_LABEL_UNUSED, "Label defined but never used", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Instruction & Operand Errors ──────── */
     {E600_INSTRUCTION_NAME_INVALID, "Invalid instruction mnemonic", UNINIT_LINE_NUM},

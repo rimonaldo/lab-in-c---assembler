@@ -13,18 +13,8 @@
     Processes input file, expands macros, and writes output
 ------------------------------------------------------------*/
 
-/*-------------------------
-    Constants and Globals
---------------------------*/
-
 #define MAX_MACRO_LINES 100
-
-/* Used to store the macro currently found (optional global) */
 const Macro *CURR_MACRO = NULL;
-
-/*-------------------------
-    Internal States
---------------------------*/
 
 /* Enum representing current macro processing state */
 typedef enum
@@ -36,39 +26,8 @@ typedef enum
     M_CALL
 } MacroState;
 
-/*-------------------------
-    Helper Functions
---------------------------*/
 
-/* Returns 1 if token is 'mcro' */
-int is_macro_start(const char *token)
-{
-    return strncmp(token, "mcro", 4) == 0;
-}
-
-/* Returns 1 if token is 'mcroend' */
-int is_macro_end(const char *token)
-{
-    return strncmp(token, "mcroend", 7) == 0;
-}
-
-/* Returns 1 if token is a comment line */
-int is_comment(const char *token)
-{
-    return token[0] == ';' || token[0] == '\n' ||
-           (token[0] == '\r' && token[1] == '\n');
-}
-
-/* Checks if macro exists in table and sets CURR_MACRO */
-int macro_exists(const MacroTable *table, const char *name)
-{
-    CURR_MACRO = get_macro(table, name);
-    return (CURR_MACRO != NULL);
-}
-
-/*-------------------------
-    Main Pre-Assembler API
---------------------------*/
+/* ------------ Main Pre-Assembler API -------------*/
 
 int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 {
@@ -237,3 +196,31 @@ int run_pre_assembler(const char *input_path, StatusInfo *status_info)
 
     return 0;
 }
+
+/*HELPERS */
+/* Returns 1 if token is 'mcro' */
+int is_macro_start(const char *token)
+{
+    return strncmp(token, "mcro", 4) == 0;
+}
+
+/* Returns 1 if token is 'mcroend' */
+int is_macro_end(const char *token)
+{
+    return strncmp(token, "mcroend", 7) == 0;
+}
+
+/* Returns 1 if token is a comment line */
+int is_comment(const char *token)
+{
+    return token[0] == ';' || token[0] == '\n' ||
+           (token[0] == '\r' && token[1] == '\n');
+}
+
+/* Checks if macro exists in table and sets CURR_MACRO */
+int macro_exists(const MacroTable *table, const char *name)
+{
+    CURR_MACRO = get_macro(table, name);
+    return (CURR_MACRO != NULL);
+}
+

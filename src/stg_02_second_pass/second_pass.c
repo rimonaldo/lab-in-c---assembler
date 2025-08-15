@@ -34,7 +34,7 @@ void bincode_to_base4(signed char value, char out[4])
     out[5] = '\0';
 }
 
-void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encoded_list, StatusInfo status_info)
+void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encoded_list, StatusInfo *status_info)
 {
     printf("second pass\n\n");
 
@@ -61,7 +61,11 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
             {
                 strcpy(label_name, curr_ast_node->content.instruction.src_op.value.label);
                 SymbolInfo *symbol_info = table_lookup(symbol_table, label_name);
-
+                if (!symbol_info)
+                {
+                    write_error_log(&status_info, E503_LABEL_UNDEFINED, 1);
+                    break;
+                }
                 while (i < curr_encoded_line->words_count && curr_encoded_line->is_waiting_words[i] != 1)
                     i++;
 
@@ -85,7 +89,11 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
             {
                 strcpy(label_name, curr_ast_node->content.instruction.dest_op.value.label);
                 SymbolInfo *symbol_info = table_lookup(symbol_table, label_name);
-
+                if (!symbol_info)
+                {
+                    write_error_log(&status_info, E503_LABEL_UNDEFINED, 1);
+                    break;
+                }
                 while (i < curr_encoded_line->words_count && curr_encoded_line->is_waiting_words[i] != 1)
                     i++;
 
@@ -114,7 +122,9 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
         curr_encoded_line = curr_encoded_line->next;
     }
 
-    /* Open output files */
+
+
+      /* Open output files */
     FILE *fp = fopen("output/prog1.ob", "w");
     FILE *ent_file = fopen("output/prog1.ent", "w");
     FILE *ext_file = fopen("output/prog1.ext", "w");
@@ -199,4 +209,4 @@ void run_second_pass(Table *symbol_table, ASTNode **ast_head, EncodedList *encod
     fclose(ext_file);
 
     printf("Second pass complete. Files generated: prog1.ob, prog1.ent, prog1.ext\n");
-}
+} 

@@ -5,6 +5,8 @@
 #include "stg_00_preprocessor/preprocessor.h"
 #include "stg_01_first_pass/first_pass.h"
 
+
+
 int main(int argc, char *argv[])
 {
     /* Check if input file was provided */
@@ -117,6 +119,7 @@ int main(int argc, char *argv[])
 
     run_second_pass(symbol_table, &ast_head, encoded_list, status_info);
 
+
     return 0;
 }
 
@@ -127,3 +130,4 @@ void generate_expanded_filename(char *dest, size_t dest_size, const char *basena
              (int)(strrchr(basename, '.') ? strrchr(basename, '.') - basename : strlen(basename)),
              basename);
 }
+

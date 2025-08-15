@@ -46,4 +46,10 @@ const char *addressing_mode_name(AddressingMode mode);
 
 ErrorCode parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx);
 
+typedef struct
+{
+    int address;
+    char *label;
+} EntryInfo;
+
 #endif
