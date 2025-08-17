@@ -254,46 +254,46 @@ Errors and warnings are categorized.
 
 ### 🔴 Preprocessor Errors (400–499)
 
-| Code | Description |
-|------|-------------|
-| **E400** | Macro used but not defined. |
-| **E401** | Nested macro definition. |
-| **W402** | Macro with no name. |
-| **W403** | Macro redefined; only first valid. |
-| **W404** | Empty macro body. |
+| Code | Severity | Description | Implemented |
+|------|----------|-------------|-------------|
+| **E400** | 🔴 | Macro used but not defined | ✅ |
+| **E401** | 🔴 | Nested macro definition | ❌ |
+| **W402** | 🟠 | Macro with no name | ✅ |
+| **W403** | 🟠 | Macro redefined; only first valid | ✅ |
+| **W404** | 🟠 | Empty macro body | ✅ |
 
 ---
 
 ### 🔴 Label Errors (500–599)
 
-| Code | Description |
-|------|-------------|
-| **E500** | Invalid label format. |
-| **E501** | Label is reserved word. |
-| **E502** | Label redefined. |
-| **E503** | Undefined label used. |
-| **E504** | Label both `.entry` and `.extern`. |
-| **W505** | `.entry` label not found. |
-| **W506** | Label defined on `.entry`/`.extern` line. |
-| **W507** | Label unused. |
+| Code | Severity | Description | Implemented |
+|------|----------|-------------|-------------|
+| **E500** | 🔴 | Invalid label format | ✅ |
+| **E501** | 🔴 | Label is reserved word | ✅ |
+| **E502** | 🔴 | Label redefined | ✅ |
+| **E503** | 🔴 | Undefined label used | ✅ |
+| **E504** | 🔴 | Label both `.entry` and `.extern` | ❌ |
+| **W505** | 🟠 | `.entry` label not found | ✅ |
+| **W506** | 🟠 | Label defined on `.entry`/`.extern` line | ❌ |
+| **W507** | 🟠 | Label unused | ❌ |
 
 ---
 
 ### 🔴 Instruction & Operand Errors (600–699)
 
-| Code | Description |
-|------|-------------|
-| **E600** | Invalid instruction name. |
-| **E601** | Invalid instruction format. |
-| **E602** | Extra characters after instruction. |
-| **E610** | Invalid immediate syntax. |
-| **E611** | Immediate out of range. |
-| **E612** | Immediate must be integer, not float. |
-| **E613** | Invalid register. |
-| **E614** | Invalid matrix index expr. |
-| **E615** | Matrix index out of range. |
-| **W616** | Matrix initialized under capacity. |
-| **W617** | Matrix initialized over capacity. |
+| Code | Severity | Description | Implemented |
+|------|----------|-------------|-------------|
+| **E600** | 🔴 | Invalid instruction name | ✅ |
+| **E601** | 🔴 | Invalid instruction format | ✅ |
+| **E602** | 🔴 | Extra characters after instruction | ✅ |
+| **E610** | 🔴 | Invalid immediate syntax | ✅ |
+| **E611** | 🔴 | Immediate out of range | ✅ |
+| **E612** | 🔴 | Immediate must be integer, not float | ✅ |
+| **E613** | 🔴 | Invalid register | ✅ |
+| **E614** | 🔴 | Invalid matrix index expr. | ✅ |
+| **E615** | 🔴 | Matrix index out of range | ✅ |
+| **W616** | 🟠 | Matrix initialized under capacity | ✅ |
+| **W617** | 🟠 | Matrix initialized over capacity | ❌ |
 
 ---
 
@@ -301,13 +301,11 @@ Errors and warnings are categorized.
 
 ⚠️ **All memory errors are fatal.**
 
-| Code | Description |
-|------|-------------|
-| **E700** | Program exceeds 256 words. |
-| **E701** | Source line exceeds max length. |
-| **W703** | Unused data section. |
+| Code | Severity | Description | Implemented |
+|------|----------|-------------|-------------|
+| **E700** | 🔴 | Program exceeds 256 words | ✅ |
+| **E701** | 🔴 | Source line exceeds max length | ✅ |
+| **W703** | 🟠 | Unused data section | ❌ |
 
 ---
 
-✅ = Implemented  
-❌ = Not yet implemented  
