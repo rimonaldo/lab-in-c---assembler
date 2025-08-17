@@ -2,11 +2,12 @@
 
 This document specifies the syntax, semantics, and error system for the assembly language of a 10-bit imaginary computer.  
 It is intended as a **reference for both users and implementers of the assembler**.  
-It defines the instruction set, directives, addressing modes, macros, and error handling rules.  
+It defines the instruction set, directives, addressing modes, macros, output files, and error handling rules.  
 
 > 📘 **Note:** Examples are provided throughout for clarity.  
-> 🔴 **Errors (`E`)** halt assembly.  
-> ⚠️ **Warnings (`W`)** indicate issues but assembly may still succeed.
+> 🔴 **Errors (`E`)** will not halt assembly, in order to write full error log of a file.  
+> 🔴 **Memory Errors (`E`)** are the exception and will halt assembly.  
+> ⚠️ **Warnings (`W`)** indicate issues but assembly may still succeed.  
 
 ---
 
@@ -24,8 +25,9 @@ It defines the instruction set, directives, addressing modes, macros, and error 
     - [Zero-Operand Instructions](#zero-operand-instructions)  
 5.  [Assembler Directives](#5-assembler-directives)  
 6.  [Macros](#6-macros)  
-7.  [Valid Addressing Modes per Instruction](#7-valid-addressing-modes-per-instruction)  
-8.  [Errors and Warnings Reference](#8-errors-and-warnings-reference)  
+7.  [Output Files](#7-output-files)  
+8.  [Valid Addressing Modes per Instruction](#8-valid-addressing-modes-per-instruction)  
+9.  [Errors and Warnings Reference](#9-errors-and-warnings-reference)  
     - [📖 Legend (Code Ranges)](#-legend-code-ranges)  
     - [🔴 Preprocessor Errors (400–499)](#-preprocessor-errors-400499)  
     - [🔴 Label Errors (500–599)](#-label-errors-500599)  
@@ -61,12 +63,12 @@ It defines the instruction set, directives, addressing modes, macros, and error 
   - **Instruction Statements** → CPU operations (`mov`, `add`).  
 
 Example:
-```assembly
+\`\`\`assembly
 ; sample program
 MAIN:   mov  #5, r1
         add  r1, r2
         stop
-```
+\`\`\`
 
 ### Labels
 
@@ -84,10 +86,10 @@ MAIN:   mov  #5, r1
   - Forward referencing allowed.  
 
 Example:
-```assembly
+\`\`\`assembly
 LOOP:   cmp  r1, r2
         bne  LOOP
-```
+\`\`\`
 
 ⚠️ **See errors [E500–E503](#-label-errors-500599)** for invalid label cases.  
 
@@ -119,9 +121,9 @@ All instructions are lowercase.
 ### Two-Operand Instructions
 
 **Format:**  
-```assembly
+\`\`\`assembly
 [label:] opcode src, dest
-```
+\`\`\`
 
 | Mnemonic | Opcode | Description | Flags |
 |----------|--------|-------------|-------|
@@ -134,9 +136,9 @@ All instructions are lowercase.
 ### One-Operand Instructions
 
 **Format:**  
-```assembly
+\`\`\`assembly
 [label:] opcode dest
-```
+\`\`\`
 
 | Mnemonic | Opcode | Description | Flags |
 |----------|--------|-------------|-------|
@@ -153,9 +155,9 @@ All instructions are lowercase.
 ### Zero-Operand Instructions
 
 **Format:**  
-```assembly
+\`\`\`assembly
 [label:] opcode
-```
+\`\`\`
 
 | Mnemonic | Opcode | Description |
 |----------|--------|-------------|
@@ -168,21 +170,21 @@ All instructions are lowercase.
 
 - **`.data <n1>, <n2>, ...`**  
   Allocate/init memory with integers.  
-  ```assembly
+  \`\`\`assembly
   VALUES: .data 7, -57, +17
-  ```
+  \`\`\`
 
 - **`.string "..."`**  
   Allocate characters + null terminator.  
-  ```assembly
+  \`\`\`assembly
   MSG: .string "Result:"
-  ```
+  \`\`\`
 
 - **`.mat [rows][cols] values...`**  
   Allocate/init 2D matrix.  
-  ```assembly
+  \`\`\`assembly
   MATRIX: .mat [2][2] 4, -5, 7, 9
-  ```
+  \`\`\`
 
 - **`.entry <label>`**  
   Declare entry point (for linker).  
@@ -195,16 +197,16 @@ All instructions are lowercase.
 ## 6. Macros
 
 **Definition:**
-```assembly
+\`\`\`assembly
 mcro PRINT
     prn r1
 mcroend
-```
+\`\`\`
 
 **Invocation:**
-```assembly
+\`\`\`assembly
 PRINT
-```
+\`\`\`
 
 **Restrictions:**
 - Must be defined before use.  
@@ -212,7 +214,35 @@ PRINT
 
 ---
 
-## 7. Valid Addressing Modes per Instruction
+## 7. Output Files
+
+The assembler produces several files during the compilation process:
+
+- **Input Files**  
+  - `.as` → Source assembly program.  
+
+- **Intermediate Files**  
+  - `.am` → Source after **macro expansion**. All macros are fully expanded, no definitions remain.  
+
+- **Output Files**  
+  - `.ob` (Object File) → Always generated. Contains the assembled machine code in base-4 (or equivalent encoding), along with code and data size headers.  
+  - `.ent` (Entry File) → Generated **only if `.entry` directives exist**. Contains a list of entry labels and their addresses.  
+  - `.ext` (Extern File) → Generated **only if `.extern` symbols are referenced**. Lists each external symbol with the addresses where it is used.  
+
+📘 **Note:** `.ent` and `.ext` are optional and may be absent if unused.  
+
+Example file set for `prog.as`:  
+\`\`\`
+prog.as     (input source)
+prog.am     (after macro expansion)
+prog.ob     (object code)
+prog.ent    (entry labels, optional)
+prog.ext    (extern labels, optional)
+\`\`\`
+
+---
+
+## 8. Valid Addressing Modes per Instruction
 
 | Instruction | Opcode | Legal Source | Legal Dest |
 |-------------|--------|--------------|------------|
@@ -235,13 +265,7 @@ PRINT
 
 ---
 
-## 8. Errors and Warnings Reference
-
-Errors and warnings are categorized.  
-**Errors halt assembly immediately.**  
-**Warnings allow continuation.**
-
----
+## 9. Errors and Warnings Reference
 
 ### 📖 Legend (Code Ranges)
 
@@ -308,4 +332,3 @@ Errors and warnings are categorized.
 | **W703** | 🟠 | Unused data section | ❌ |
 
 ---
-
