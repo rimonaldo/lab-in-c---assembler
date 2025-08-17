@@ -5,7 +5,7 @@
             "name": "Debug Assembler (make build)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/am",
+            "program": "${workspaceFolder}/bin/assembler",
             "args": [
                 "input/prog3/prog1.as",
             ],

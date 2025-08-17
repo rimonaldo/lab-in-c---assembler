@@ -1,6 +1,7 @@
 #ifndef AST_H
 #define AST_H
 #include "../tokenizer/tokenizer.h"
+#include "../errors/errors.h"
 /*===============================
   Type Definitions (Enums)
 ===============================*/
@@ -9,9 +10,9 @@
 
 typedef enum
 {
-    SUCCESS = 500,
+    SUCCESS = 100,
     ERR1,
-    ERR2,
+    ERR2
 } Status;
 
 typedef enum
@@ -102,6 +103,7 @@ typedef struct InstructionInfo
     Operand src_op;
     Operand dest_op;
     Status status;
+    ErrorCode error_code;
 } InstructionInfo;
 
 typedef struct DirectiveInfo
@@ -118,6 +120,7 @@ typedef struct DirectiveInfo
         char *label; /* for ENTRY or EXTERN directives */
     } params;
     Status status;
+    ErrorCode error_code;
 } DirectiveInfo;
 
 typedef struct ASTNode

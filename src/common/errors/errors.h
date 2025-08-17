@@ -21,9 +21,8 @@ typedef enum
     E501_LABEL_RESERVED,           /* Label is reserved keyword */
     E502_LABEL_REDEFINED,          /* Duplicate label in same file */
     E503_LABEL_UNDEFINED,          /* Label used but never defined */
-    E504_LABEL_FORWARD_UNDEFINED,  /* Label referenced before definition and never resolved */
-    E505_LABEL_ENTRY_NOT_FOUND,    /* .entry label not defined in file */
-    E506_LABEL_ENTRY_AND_EXTERN,   /* Label declared as both .entry and .extern */
+    E504_LABEL_ENTRY_AND_EXTERN,   /* Label declared as both .entry and .extern */
+    W505_LABEL_ENTRY_NOT_FOUND,    /* .entry label not defined in file */
     W507_LABEL_ON_ENTRY_OR_EXTERN, /* Label before .entry/.extern directive */
     W508_LABEL_UNUSED,             /* Label defined but never used */
 
@@ -49,8 +48,9 @@ typedef enum
     E700_MEMORY_PROGRAM_WORD_LIMIT = 700, /* Program exceeds machine memory (e.g., 256 words) */
     E701_MEMORY_LINE_CHAR_LIMIT,          /* Source line exceeds 80 characters */
     E702_MEMORY_STACK_OVERFLOW_RISK,      /* Stack overflow risk detected */
-    W703_MEMORY_UNUSED_DATA               /* Unused .data/.mat values (extra initializers) */
+    W703_MEMORY_UNUSED_DATA,               /* Unused .data/.mat values (extra initializers) */
 
+    SUCCESS_100 = 100
 } ErrorCode;
 
 typedef struct
@@ -70,9 +70,9 @@ typedef struct
 } StatusInfo;
 
 /* Returns pointer to ErrorInfo for given error code */
-const ErrorInfo *get_error_log(ErrorCode code);
+ErrorInfo *get_error_log(ErrorCode code);
 
-const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number);
+ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number);
 
 void free_status_info(StatusInfo *status_info);
 

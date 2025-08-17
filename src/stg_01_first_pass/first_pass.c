@@ -1,12 +1,59 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "first_pass.h"
 
 char *my_strdup(const char *s);
 char *trim_whitespace(char *str);
 void init_symbol_table()
 {
+}
+
+static char *dup_label_trim_colon(const char *s)
+{
+    size_t start = 0, end, len;
+    char *out;
+
+    if (s == NULL)
+        return NULL;
+
+    end = strlen(s);
+    /* trim trailing whitespace */
+    while (end > 0 && (s[end - 1] == ' ' || s[end - 1] == '\t' ||
+                       s[end - 1] == '\n' || s[end - 1] == '\r'))
+    {
+        end--;
+    }
+    /* trim one trailing ':' */
+    if (end > 0 && s[end - 1] == ':')
+    {
+        end--;
+        /* trim spaces just before the ':' (e.g., "LABEL :") */
+        while (end > 0 && (s[end - 1] == ' ' || s[end - 1] == '\t'))
+        {
+            end--;
+        }
+    }
+    /* trim leading whitespace (optional, but handy) */
+    while (s[start] == ' ' || s[start] == '\t')
+    {
+        start++;
+    }
+
+    if (end < start)
+        end = start; /* empty result */
+
+    len = end - start;
+    out = (char *)malloc(len + 1);
+    if (out == NULL)
+        return NULL;
+
+    /* copy + NUL */
+    if (len > 0)
+        memcpy(out, s + start, len);
+    out[len] = '\0';
+    return out;
 }
 
 /* -------------- MAIN DRIVER -------------- */
@@ -33,30 +80,36 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 
     while (fgets(line, sizeof(line), file))
     {
+        /* PRINTING */
         PRINT_LINE(line_number);
         PRINT_RAW_LINE(line);
+
+        /* TEST INPUT CONSTRAINS */
         if (strlen(line) > MAX_LINE_LEN)
             write_error_log(status_info, E701_MEMORY_LINE_CHAR_LIMIT, line_number);
 
+        /* LOOP VARIABLES */
         tokenized_line = tokenize_line(line);
         int leader_idx = 0;
         leader = tokenized_line.tokens[0];
         PRINT_TOKEN(leader);
         StatementType statement_type;
         SymbolInfo *symbol_info = malloc(sizeof(SymbolInfo));
-        memset(symbol_info, 0, sizeof(SymbolInfo));
 
-        /* ignore non code lines */
+        /* IGNORE NON CODE LINES */
         if (is_comment_line(leader) || is_empty_line(tokenized_line))
         {
             line_number++;
             continue;
         }
 
-        /* inserts new label to symbol table as: clean_label | symbol_info */
-        /* moves leader token, keeps is_label_declaration flag */
+        /* LABEL DECLARATION FLAG, LEADER TOKEN INCREMENT */
         if (is_symbol_declare(leader))
         {
+            if (!is_valid_label_name(leader))
+                write_error_log(status_info, E500_LABEL_INVALID, line_number);
+            if (is_reserved_label_name(leader))
+                write_error_log(status_info, E501_LABEL_RESERVED, line_number);
             is_label_declaration = 1;
             PRINT_LABEL_FOUND(leader);
             int is_declared = table_lookup(symbol_table, leader);
@@ -65,11 +118,15 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 write_error_log(status_info, E502_LABEL_REDEFINED, line_number);
             else
             {
-                clean_label = malloc(strlen(leader));
-                strncpy(clean_label, leader, strlen(leader) - 1);
-                clean_label[strlen(leader) - 1] = '\0';
-
-                *symbol_info->name = clean_label;
+                clean_label = dup_label_trim_colon(leader);
+                if (clean_label == NULL)
+                {
+                    /* handle OOM */
+                }
+                else
+                {
+                    *symbol_info->name = clean_label; /* NOTE: no '*' deref */
+                }
             }
 
             /* move leader to next token */
@@ -77,10 +134,15 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             PRINT_TOKEN(leader);
         }
 
-        /* switch statetment type */
+        if (ends_with_comma(line))
+            write_error_log(status_info, E602_INSTRUCTION_TRAILING_CHARS, line_number);
+
+        /* SWITCH STATEMENTS */
         statement_type = get_statement_type(leader);
         switch (statement_type)
         {
+        /* PARSE LINE, ENCODE LINE WORDS, LABEL ->SYMBOL_TABLE INSERT, AST APPEND
+        ENCODED_LIST INSERT, IC INCREMENT */
         case INSTRUCTION_STATEMENT:
         {
 
@@ -89,14 +151,25 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             ASTNode *new_node;
             PRINT_INSTRUCTION(opcode);
             new_node = parse_instruction_line(line_number, tokenized_line, leader_idx);
-            if (!new_node)
+            if (new_node->content.instruction.error_code != SUCCESS_100)
+            {
+                write_error_log(status_info, new_node->content.instruction.error_code, line_number);
                 break;
+            }
+            if (!new_node)
+            {
+                write_error_log(status_info, E601_INSTRUCTION_FORMAT_INVALID, line_number);
+                break;
+            }
+
             append_ast_node(head, &tail, new_node);
 
             if (new_node->status != ERR1)
             {
                 encoded_line = encode_instruction_line(new_node, leader_idx);
-                if (is_label_declaration >= 0)
+
+                /* SYMBOL_TABLE INSERTION, IC++ */
+                if (is_label_declaration > 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
                     symbol_info->address = *IC;
@@ -108,7 +181,8 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
 
                     is_label_declaration = -1;
                 }
-                /* increment instruction counter */
+
+                /* ENCODED LIST INSERTION */
                 if (encoded_list->head == NULL)
                 {
                     encoded_list->head = encoded_line;
@@ -121,31 +195,40 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 }
                 encoded_list->size++;
 
+                /* IC INCREMENT */
                 *IC += encoded_line->words_count;
             }
         }
         break;
+        /* PARSE, ENCODE DATA WORDS, DC INCREMENT, AST APPEND,
+        ENT & EXT HANDLE, LABEL or EXT ->SYMBOL TABLE INSERT, ENCODED LINE INSERT */
         case DIRECTIVE_STATEMENT:
         {
             EncodedLine *encoded_line = malloc(sizeof(EncodedLine));
+            /* PRINTS */
             PRINT_DIRECTIVE(leader);
             int pre_inc_DC = DC; /* Save DC before increment */
             char *label_token;
             /* Parse directive and update DC */
             ASTNode *node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
-
-            if (node->status != SUCCESS)
-                break;
-
+            if(node->content.directive.error_code != SUCCESS_100){
+                write_error_log(status_info,node->content.directive.error_code,line_number);
+            }
+            /* ENCODE DATA WORDS, DC INCREMENT */
             encoded_line = encode_directive_line(node, leader_idx);
-            append_ast_node(head, &tail, node); /* Add node to AST */
+
+            /* AST APPEND */
+            append_ast_node(head, &tail, node);
             symbol_info->type = SYMBOL_DATA;
             symbol_info->is_entry = -1;
             symbol_info->is_extern = -1;
 
-            /* Handle .entry directive */
+            /* ENTRY & EXTERN HANDLE */
             if (node->content.directive.type == ENTRY)
             {
+
+                clean_label = dup_label_trim_colon(tokenized_line.tokens[leader_idx + 1]);
+                *symbol_info->name = clean_label;
                 int address = line_number;
                 if (is_label_declaration > 0)
                 {
@@ -173,9 +256,8 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 label_token = malloc(strlen(tokenized_line.tokens[leader_idx + 1]));
                 strncpy(label_token, tokenized_line.tokens[leader_idx + 1], strlen(str_name));
 
-                insert_entry_label(ent_table, label_token, address);
+                insert_entry_label(ent_table, clean_label, address);
             }
-            /* Handle .extern directive */
             else if (node->content.directive.type == EXTERN)
             {
                 /* Get the label token after directive */
@@ -187,8 +269,8 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 insert_extern_label(ext_table, label_token, 0);
             }
 
-            /* Insert label if declared or extern */
-            if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
+            /* IF LABEL OR EXTERN ->TABLE INSERT */
+            if (is_label_declaration > 0 || symbol_info->is_extern > 0)
             {
                 if (symbol_info->type == SYMBOL_EXTERN)
                     clean_label = label_token;
@@ -204,6 +286,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                     printf("[Insert Error] Failed to insert label\n");
             }
 
+            /* ENCODED LINE LIST INSERT */
             if (encoded_line != NULL)
             {
                 if (encoded_list->head == NULL)
@@ -231,10 +314,22 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
         }
         break;
         }
+        /* NEXT LINE */
+        int total = *IC + DC - 100;
+        if (total > 256)
+        {
+            write_error_log(status_info, E700_MEMORY_PROGRAM_WORD_LIMIT, line_number);
+            return;
+        }
 
         line_number++;
     }
-
+    int total = *IC + DC - 100;
+    if (total > 256)
+    {
+        write_error_log(status_info, E700_MEMORY_PROGRAM_WORD_LIMIT, line_number);
+        return;
+    }
     /* tables print */
     printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
     table_print(symbol_table, print_symbol);
@@ -244,13 +339,19 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
     table_print(ent_table, print_entry);
     printf("_____________________________________\n");
 
+    /* FLAG ENTRY SYMBOLS */
     TableNode *curr = ent_table->head;
     while (curr)
     {
         void *ent_data = table_lookup(symbol_table, curr->key);
+        int *ref_line = (int *)curr->data;
+        if (!ent_data)
+        {
+            write_error_log(status_info, W505_LABEL_ENTRY_NOT_FOUND, *ref_line);
+            break;
+        }
         SymbolInfo *ent_info = (SymbolInfo *)ent_data;
         ent_info->is_entry = 1;
-        int *ref_line = (int *)curr->data;
         ent_info->ref_line = *ref_line;
         curr = curr->next;
     }
@@ -266,7 +367,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     int data_size = tokenized_line.count - 1;
     int data_val_idx;
     int data_count;
-
+    
     DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
     {
@@ -274,6 +375,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         return NULL;
     }
     info->status = SUCCESS;
+    info->error_code = SUCCESS_100;
     info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
 
     switch (info->type)
@@ -397,6 +499,10 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             int mat_increment = 2;
             int data_val_idx = leader_idx + 1 + i + mat_increment;
             char *data_value_token = tokenized_line.tokens[data_val_idx];
+            if(tokenized_line.tokens[data_val_idx][0]=='\0'){
+                printf("warning, completing zeros to mat");
+                info->error_code = W617_OPERAND_MAT_INITIALIZED_UNDER;
+            }
             int is_missing_val = strcmp(data_value_token, delimeter) == 0;
 
             /*TODO: handle error , , empty value ERR CODE*/
@@ -484,6 +590,7 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
 {
     /*TODO: memeset*/
     InstructionInfo info;
+    info.error_code = SUCCESS_100;
     Opcode opcode = get_opcode(tokenized_line.tokens[leader_idx]);
     int expected_num_op = expect_operands(opcode);
     info.opcode = opcode;
@@ -493,21 +600,23 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
     printf("--> Expected operands: %d\n", expected_num_op);
     int operands_count = tokenized_line.count - (leader_idx + 2);
     if (expected_num_op != operands_count)
-    {
-        /* handle error - wrong amount of operands (too few or too many)*/
         return NULL;
-    }
+
     switch (expected_num_op)
     {
     case 1:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
-        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
+        info.error_code = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 1);
         break;
     case 2:
         PRINT_OPERAND(1, tokenized_line.tokens[leader_idx + 1]);
         PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
-        info.status = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
-        info.status = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
+        info.error_code = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
+        ErrorCode dest_error_code = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
+        if (info.error_code == SUCCESS_100)
+        {
+            info.error_code = dest_error_code;
+        }
         break;
     default:
         printf("--> No operands expected.\n");
@@ -517,25 +626,35 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
     return create_instruction_node(line_num, NULL, info);
 }
 
-Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
+ErrorCode parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_line, int token_idx)
 {
 
     printf("Parsing operand at token index %d: %s\n", token_idx, tokenized_line.tokens[token_idx]);
 
     operand_to_parse->mode = get_mode(tokenized_line, token_idx);
     printf("Detected addressing mode: %s\n", addressing_mode_name(operand_to_parse->mode));
-
+    ErrorCode error_code = SUCCESS_100;
     switch (operand_to_parse->mode)
     {
     case IMMEDIATE:
+    {
+        if (!is_valid_immediate_token(tokenized_line.tokens[token_idx]))
+            error_code = E610_OPERAND_IMMEDIATE_INVALID;
+        if (!is_in_bound_immediate_token(tokenized_line.tokens[token_idx]))
+            error_code = E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS;
+        if (is_immediate_float_token(tokenized_line.tokens[token_idx]))
+            error_code = E612_OPERAND_IMMEDIATE_FLOAT;
         operand_to_parse->value.immediate_value = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Immediate value: %d\n", operand_to_parse->value.immediate_value);
-        break;
+    }
+    break;
     case DIRECT:
         operand_to_parse->value.label = my_strdup(tokenized_line.tokens[token_idx]);
         printf("Direct label: %s\n", operand_to_parse->value.label);
         break;
     case REGISTER:
+        if (!is_valid_register(tokenized_line.tokens[token_idx]))
+            error_code = E613_OPERAND_REGISTER_INVALID;
         operand_to_parse->value.reg_num = atoi(tokenized_line.tokens[token_idx] + 1);
         printf("Register number: %d\n", operand_to_parse->value.reg_num);
         break;
@@ -556,12 +675,26 @@ Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_lin
         str_label[str_label_size] = '\0';
 
         operand_to_parse->value.index.label = my_strdup(str_label);
-        operand_to_parse->value.index.row_reg_num = tokenized_line.tokens[token_idx][str_label_size + 2] - '0';
-        operand_to_parse->value.index.col_reg_num = tokenized_line.tokens[token_idx][str_label_size + 6] - '0';
+        char row_reg[3];
+        char col_reg[3];
+        int j;
+        for (j = 0; j < 2; j++)
+        {
+            row_reg[j] = tokenized_line.tokens[token_idx][str_label_size + 1 + j];
+            col_reg[j] = tokenized_line.tokens[token_idx][str_label_size + 5 + j];
+        }
+        row_reg[2] = '\0';
+        col_reg[2] = '\0';
+        if (!is_valid_register(row_reg))
+            error_code = E613_OPERAND_REGISTER_INVALID;
+        operand_to_parse->value.index.row_reg_num = atoi(row_reg + 1);
+        operand_to_parse->value.index.col_reg_num = atoi(col_reg + 1);
         printf("Matrix label: %s, Row register: %d, Col register: %d\n",
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
                operand_to_parse->value.index.col_reg_num);
+        memset(row_reg, 0, 0);
+        memset(col_reg, 0, 0);
     }
     break;
     case NONE:
@@ -573,7 +706,8 @@ Status parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_lin
     }
     break;
     }
-    return SUCCESS;
+
+    return error_code;
 }
 
 /* -------------- type vendors -------------- */
@@ -693,7 +827,7 @@ int is_empty_line(Tokens tokens)
 int is_symbol_declare(char *token)
 {
     int len = strlen(token);
-    return (is_valid_label_name(token) && token[len - 1] == ':');
+    return (token[len - 1] == ':');
 }
 
 /* -------------- validators -------------- */
@@ -781,43 +915,23 @@ int is_valid_mat_access(char *value)
         /* handle error */
     }
 
-    /* check valid register */
-    temp_reg1[0] = trimmed_value[i + 1];
-    temp_reg1[1] = trimmed_value[i + 2];
-    temp_reg1[2] = '\0';
-    if (!is_valid_register(temp_reg1))
-    {
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
         return 0;
-        /* handle error */
-    }
-    /* check for closing ']' */
-    if (trimmed_value[i + 3] != ']')
+    else
     {
-        return 0;
-        /* handle error */
-    }
-    /* check opening '[' */
-    if (trimmed_value[i + 4] != '[')
-    {
-        return 0;
-        /* handle error */
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
     }
 
-    /* check valid register */
-    temp_reg2[0] = trimmed_value[i + 5];
-    temp_reg2[1] = trimmed_value[i + 6];
-    temp_reg2[2] = '\0';
-    if (!is_valid_register(temp_reg2))
-    {
+    /* check starting [, than loop until closing ]*/
+    i++;
+    if (trimmed_value[i] != '[')
         return 0;
-        /* handle error */
-    }
-
-    /* check for closing ']' */
-    if (trimmed_value[i + 7] != ']')
+    else
     {
-        return 0;
-        /* handle error */
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
     }
 
     return 1;
@@ -826,9 +940,180 @@ int is_valid_mat_access(char *value)
 int is_valid_register(char *value)
 {
     /* TODO: hande unvalid register */
-    return value[0] == 'r' &&
-           value[1] >= '0' && value[1] <= '7' &&
-           value[2] == '\0';
+    if (value[0] != 'r')
+        return 0;
+    if (value[1] < '0' || value[1] > '7')
+        return 0;
+    if (value[2] != '\0')
+        return 0;
+    return 1;
+}
+
+int is_reserved_label_name(const char *s)
+{
+    /* list only what you actually use */
+    static const char *reserved[] = {
+        /* opcodes */
+        "mov:", "cmp:", "add:", "sub:", "lea:",
+        "not:", "clr:", "inc:", "dec:",
+        "jmp:", "bne:", "red:", "prn:", "jsr:",
+        "rts:", "stop:",
+        /* registers */
+        "r0:", "r1:", "r2:", "r3:", "r4:", "r5:", "r6:", "r7:",
+        /* macro keywords */
+        "mcro:", "mcroend:",
+        /* directives (both with and without dot if you want) */
+        ".data:", ".string:", ".mat:", ".entry:", ".extern:",
+        "data:", "string:", "mat:", "entry:", "extern:"};
+    size_t i, n = sizeof(reserved) / sizeof(reserved[0]);
+
+    if (!s || !*s)
+        return 1; /* treat empty as bad */
+
+    for (i = 0; i < n; ++i)
+    {
+        if (strcmp(s, reserved[i]) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+int ends_with_comma(const char *line)
+{
+    int i;
+    if (!line)
+        return 0;
+
+    /* start from last char and move backwards skipping spaces/tabs */
+    for (i = (int)strlen(line) - 1; i >= 0; i--)
+    {
+        if (isspace((unsigned char)line[i]))
+        {
+            continue;
+        }
+        return (line[i] == ',');
+    }
+    return 0; /* empty or only spaces */
+}
+
+int is_valid_immediate_token(const char *tok)
+{
+    int i;
+
+    if (!tok)
+        return 0;
+
+    /* must start with '#' */
+    if (tok[0] != '#')
+        return 0;
+
+    /* must have at least one char after '#' */
+    if (tok[1] == '\0')
+        return 0;
+
+    /* optional + or - */
+    i = 1;
+    if (tok[i] == '+' || tok[i] == '-')
+    {
+        i++;
+        if (tok[i] == '\0')
+            return 0; /* sign must be followed by digit(s) */
+    }
+
+    /* remaining must be digits only */
+    for (; tok[i] != '\0'; i++)
+    {
+        if (!isdigit((unsigned char)tok[i]))
+            return 0;
+    }
+
+    return 1; /* valid immediate syntax */
+}
+
+int is_in_bound_immediate_token(const char *tok)
+{
+    long v;
+    char *endp;
+
+    if (!tok || tok[0] != '#')
+        return 0; /* must start with '#' */
+    if (tok[1] == '\0')
+        return 0; /* must have digits (optionally after +/-) */
+
+    v = strtol(tok + 1, &endp, 10); /* parse after '#' */
+    if (*endp != '\0')
+        return 0; /* extra junk = invalid */
+
+    /* signed 10-bit range */
+    return (v >= -512 && v <= 511) ? 1 : 0;
+}
+
+int is_immediate_float_token(const char *tok)
+{
+    const char *p;
+    /* skip # and optional sign */
+    p = tok + 1;
+    if (*p == '+' || *p == '-')
+        p++;
+
+    /* loop through the string to check for decimal point */
+    int i = 0;
+    while (p[i])
+    {
+        if (p[i] == '.')
+            return 1;
+        i++;
+    }
+    return 0;
+}
+
+int is_mat_access(char *value)
+{
+    /* trimmed copy of value */
+    char *trimmed_value = trim_whitespace(value);
+    char temp[MAX_TOKEN_LEN];
+    char temp_reg1[3];
+    char temp_reg2[3];
+    int i = 0;
+
+    /* copy name, stop at opening '[' */
+    while (i < MAX_TOKEN_LEN - 1 && trimmed_value[i] != '[')
+    {
+        if (trimmed_value[i] == '\0')
+        {
+            return 0;
+        }
+        temp[i] = trimmed_value[i];
+        i++;
+    }
+
+    /* check if valid label name */
+    temp[i] = '\0';
+    if (!is_valid_label_name(temp))
+    {
+        return 0;
+        /* handle error */
+    }
+
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
+        return 0;
+    else
+    {
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
+    }
+
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
+        return 0;
+    else
+    {
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
+    }
+
+    return 1;
 }
 
 /* -------------- ....... -------------- */

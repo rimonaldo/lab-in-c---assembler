@@ -18,9 +18,8 @@ static const ErrorInfo error_table[] = {
     {E501_LABEL_RESERVED, "Label name is reserved (e.g., instruction or directive name)", UNINIT_LINE_NUM},
     {E502_LABEL_REDEFINED, "Label redefined in the same file", UNINIT_LINE_NUM},
     {E503_LABEL_UNDEFINED, "Undefined label used in operand", UNINIT_LINE_NUM},
-    {E504_LABEL_FORWARD_UNDEFINED, "Forward-referenced label was never defined", UNINIT_LINE_NUM},
-    {E505_LABEL_ENTRY_NOT_FOUND, ".entry label is not defined within the file", UNINIT_LINE_NUM},
-    {E506_LABEL_ENTRY_AND_EXTERN, "Label declared as both .entry and .extern", UNINIT_LINE_NUM},
+    {E504_LABEL_ENTRY_AND_EXTERN, "Label declared as both .entry and .extern", UNINIT_LINE_NUM},
+    {W505_LABEL_ENTRY_NOT_FOUND, ".entry label is not defined within the file", UNINIT_LINE_NUM,SEV_WARNING},
     {W507_LABEL_ON_ENTRY_OR_EXTERN, "Label defined on a line with .entry/.extern (ignored)", UNINIT_LINE_NUM, SEV_WARNING},
     {W508_LABEL_UNUSED, "Label defined but never used", UNINIT_LINE_NUM, SEV_WARNING},
 
@@ -30,7 +29,7 @@ static const ErrorInfo error_table[] = {
     {E602_INSTRUCTION_TRAILING_CHARS, "Unexpected characters after valid instruction", UNINIT_LINE_NUM},
     {E603_INSTRUCTION_ADDRESSING_MODE_INVALID, "Illegal addressing mode for instruction", UNINIT_LINE_NUM},
 
-    {E610_OPERAND_IMMEDIATE_INVALID, "Invalid immediate value syntax (e.g., missing '#')", UNINIT_LINE_NUM},
+    {E610_OPERAND_IMMEDIATE_INVALID, "Invalid immediate value syntax ", UNINIT_LINE_NUM},
     {E611_OPERAND_IMMEDIATE_OUT_OF_BOUNDS, "Immediate value out of range (-512 to +511)", UNINIT_LINE_NUM},
     {E612_OPERAND_IMMEDIATE_FLOAT, "Immediate value cannot be a float", UNINIT_LINE_NUM},
 
@@ -39,7 +38,7 @@ static const ErrorInfo error_table[] = {
 
     {E615_OPERAND_MAT_INDEX_INVALID, "Invalid matrix index format (should be [rX][rY])", UNINIT_LINE_NUM},
     {E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS, "Matrix indices must use valid registers (r0–r7)", UNINIT_LINE_NUM},
-    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
+    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size, matrix is filled with zero values", UNINIT_LINE_NUM, SEV_WARNING},
     {W618_OPERAND_MAT_INITIALIZED_OVER, "Too many matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Memory Errors & Warnings ──────── */
@@ -51,7 +50,7 @@ static const ErrorInfo error_table[] = {
 
 #define ERROR_TABLE_SIZE (sizeof(error_table) / sizeof(ErrorInfo))
 
-const ErrorInfo *get_error_log(ErrorCode code)
+ErrorInfo *get_error_log(ErrorCode code)
 {
     int i;
     for (i = 0; i < (int)ERROR_TABLE_SIZE; i++)
@@ -82,7 +81,7 @@ void print_errors(StatusInfo *status_info)
     }
 }
 
-const ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number)
+ErrorInfo write_error_log(StatusInfo *status_info, ErrorCode code, int line_number)
 {
     /* dynamicaly increase error log memory space when needed */
     if (status_info->error_count >= status_info->capacity)

@@ -17,6 +17,7 @@
         "utils.h": "c",
         "printer.h": "c",
         "errors.h": "c",
-        "second_pass.h": "c"
+        "second_pass.h": "c",
+        "type_traits": "c"
     }
 }
