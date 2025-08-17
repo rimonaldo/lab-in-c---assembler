@@ -169,7 +169,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
                 encoded_line = encode_instruction_line(new_node, leader_idx);
 
                 /* SYMBOL_TABLE INSERTION, IC++ */
-                if (is_label_declaration >= 0)
+                if (is_label_declaration > 0)
                 {
                     symbol_info->type = SYMBOL_CODE;
                     symbol_info->address = *IC;
@@ -268,7 +268,7 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             }
 
             /* IF LABEL OR EXTERN ->TABLE INSERT */
-            if (is_label_declaration >= 0 || symbol_info->is_extern >= 0)
+            if (is_label_declaration > 0 || symbol_info->is_extern > 0)
             {
                 if (symbol_info->type == SYMBOL_EXTERN)
                     clean_label = label_token;
@@ -331,9 +331,14 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
     while (curr)
     {
         void *ent_data = table_lookup(symbol_table, curr->key);
+        int *ref_line = (int *)curr->data;
+        if(!ent_data)
+            {
+                write_error_log(status_info,W505_LABEL_ENTRY_NOT_FOUND,*ref_line);
+                break;
+            }
         SymbolInfo *ent_info = (SymbolInfo *)ent_data;
         ent_info->is_entry = 1;
-        int *ref_line = (int *)curr->data;
         ent_info->ref_line = *ref_line;
         curr = curr->next;
     }
