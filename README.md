@@ -17,11 +17,12 @@ This document outlines the syntax and features of the assembly language for the 
 5.  [Assembler Directives](#5-assembler-directives)
 6.  [Macros](#6-macros)
 7.  [Valid Addressing Modes per Instruction](#7-valid-addressing-modes-per-instruction)
-8.  [Errors and Warnings Reference](#8-errors-and-warnings-reference)
-    - [🔴 Syntax Errors](#-syntax-errors)
-    - [🔴 Semantic Errors](#-semantic-errors)
-    - [⚠️ Memory Errors](#️-memory-errors)
-    - [⚙️ Pre-Assembler (Macro) Errors and Warnings](#️-pre-assembler-macro-errors-and-warnings)
+8. [Errors and Warnings Reference](#8-errors-and-warnings-reference)  
+    - [📖 Legend (Code Ranges)](#-legend-code-ranges)  
+    - [🔴 Preprocessor Errors (400–499)](#-preprocessor-errors-400499)  
+    - [🔴 Label Errors (500–599)](#-label-errors-500599)  
+    - [🔴 Instruction & Operand Errors (600–699)](#-instruction--operand-errors-600699)  
+    - [🔴 Memory Errors (700–799, Fatal)](#-memory-errors-700799)  
 
 
 ## 1. Hardware and Data Types
