@@ -211,7 +211,9 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
             char *label_token;
             /* Parse directive and update DC */
             ASTNode *node = parse_directive_line(line_number, tokenized_line, leader_idx, &DC);
-
+            if(node->content.directive.error_code != SUCCESS_100){
+                write_error_log(status_info,node->content.directive.error_code,line_number);
+            }
             /* ENCODE DATA WORDS, DC INCREMENT */
             encoded_line = encode_directive_line(node, leader_idx);
 
@@ -312,11 +314,22 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
         }
         break;
         }
-
         /* NEXT LINE */
+        int total = *IC + DC - 100;
+        if (total > 256)
+        {
+            write_error_log(status_info, E700_MEMORY_PROGRAM_WORD_LIMIT, line_number);
+            return;
+        }
+
         line_number++;
     }
-
+    int total = *IC + DC - 100;
+    if (total > 256)
+    {
+        write_error_log(status_info, E700_MEMORY_PROGRAM_WORD_LIMIT, line_number);
+        return;
+    }
     /* tables print */
     printf("\n\033[1;36mSYMBOL TABLE:\033[0m\n");
     table_print(symbol_table, print_symbol);
@@ -332,11 +345,11 @@ void run_first_pass(char *filename, Table *symbol_table, ASTNode **head, int *IC
     {
         void *ent_data = table_lookup(symbol_table, curr->key);
         int *ref_line = (int *)curr->data;
-        if(!ent_data)
-            {
-                write_error_log(status_info,W505_LABEL_ENTRY_NOT_FOUND,*ref_line);
-                break;
-            }
+        if (!ent_data)
+        {
+            write_error_log(status_info, W505_LABEL_ENTRY_NOT_FOUND, *ref_line);
+            break;
+        }
         SymbolInfo *ent_info = (SymbolInfo *)ent_data;
         ent_info->is_entry = 1;
         ent_info->ref_line = *ref_line;
@@ -354,7 +367,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
     int data_size = tokenized_line.count - 1;
     int data_val_idx;
     int data_count;
-
+    
     DirectiveInfo *info = malloc(sizeof(DirectiveInfo));
     if (!info)
     {
@@ -362,7 +375,7 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
         return NULL;
     }
     info->status = SUCCESS;
-
+    info->error_code = SUCCESS_100;
     info->type = get_directive_type(tokenized_line.tokens[leader_idx]);
 
     switch (info->type)
@@ -486,6 +499,10 @@ ASTNode *parse_directive_line(int line_num, Tokens tokenized_line, int leader_id
             int mat_increment = 2;
             int data_val_idx = leader_idx + 1 + i + mat_increment;
             char *data_value_token = tokenized_line.tokens[data_val_idx];
+            if(tokenized_line.tokens[data_val_idx][0]=='\0'){
+                printf("warning, completing zeros to mat");
+                info->error_code = W617_OPERAND_MAT_INITIALIZED_UNDER;
+            }
             int is_missing_val = strcmp(data_value_token, delimeter) == 0;
 
             /*TODO: handle error , , empty value ERR CODE*/
@@ -596,7 +613,8 @@ ASTNode *parse_instruction_line(int line_num, Tokens tokenized_line, int leader_
         PRINT_OPERAND(2, tokenized_line.tokens[leader_idx + 2]);
         info.error_code = parse_instruction_operand(&(info.src_op), tokenized_line, leader_idx + 1);
         ErrorCode dest_error_code = parse_instruction_operand(&(info.dest_op), tokenized_line, leader_idx + 2);
-        if(info.error_code == SUCCESS_100){
+        if (info.error_code == SUCCESS_100)
+        {
             info.error_code = dest_error_code;
         }
         break;
@@ -675,8 +693,8 @@ ErrorCode parse_instruction_operand(Operand *operand_to_parse, Tokens tokenized_
                operand_to_parse->value.index.label,
                operand_to_parse->value.index.row_reg_num,
                operand_to_parse->value.index.col_reg_num);
-        memset(row_reg,0,0);
-        memset(col_reg,0,0);
+        memset(row_reg, 0, 0);
+        memset(col_reg, 0, 0);
     }
     break;
     case NONE:
@@ -897,39 +915,23 @@ int is_valid_mat_access(char *value)
         /* handle error */
     }
 
-    /* check valid register */
-    temp_reg1[0] = trimmed_value[i + 1];
-    temp_reg1[1] = trimmed_value[i + 2];
-    temp_reg1[2] = '\0';
-
-    /* check for closing ']' */
-    if (trimmed_value[i + 3] != ']')
-    {
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
         return 0;
-        /* handle error */
-    }
-    /* check opening '[' */
-    if (trimmed_value[i + 4] != '[')
+    else
     {
-        return 0;
-        /* handle error */
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
     }
 
-    /* check valid register */
-    temp_reg2[0] = trimmed_value[i + 5];
-    temp_reg2[1] = trimmed_value[i + 6];
-    temp_reg2[2] = '\0';
-    if (!is_valid_register(temp_reg2))
-    {
+    /* check starting [, than loop until closing ]*/
+    i++;
+    if (trimmed_value[i] != '[')
         return 0;
-        /* handle error */
-    }
-
-    /* check for closing ']' */
-    if (trimmed_value[i + 7] != ']')
+    else
     {
-        return 0;
-        /* handle error */
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
     }
 
     return 1;
@@ -1063,6 +1065,55 @@ int is_immediate_float_token(const char *tok)
         i++;
     }
     return 0;
+}
+
+int is_mat_access(char *value)
+{
+    /* trimmed copy of value */
+    char *trimmed_value = trim_whitespace(value);
+    char temp[MAX_TOKEN_LEN];
+    char temp_reg1[3];
+    char temp_reg2[3];
+    int i = 0;
+
+    /* copy name, stop at opening '[' */
+    while (i < MAX_TOKEN_LEN - 1 && trimmed_value[i] != '[')
+    {
+        if (trimmed_value[i] == '\0')
+        {
+            return 0;
+        }
+        temp[i] = trimmed_value[i];
+        i++;
+    }
+
+    /* check if valid label name */
+    temp[i] = '\0';
+    if (!is_valid_label_name(temp))
+    {
+        return 0;
+        /* handle error */
+    }
+
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
+        return 0;
+    else
+    {
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
+    }
+
+    /* check starting [, than loop until closing ]*/
+    if (trimmed_value[i] != '[')
+        return 0;
+    else
+    {
+        while (trimmed_value[i] != ']' && i < strlen(value))
+            i++;
+    }
+
+    return 1;
 }
 
 /* -------------- ....... -------------- */

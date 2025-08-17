@@ -120,6 +120,7 @@ typedef struct DirectiveInfo
         char *label; /* for ENTRY or EXTERN directives */
     } params;
     Status status;
+    ErrorCode error_code;
 } DirectiveInfo;
 
 typedef struct ASTNode

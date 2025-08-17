@@ -38,7 +38,7 @@ static const ErrorInfo error_table[] = {
 
     {E615_OPERAND_MAT_INDEX_INVALID, "Invalid matrix index format (should be [rX][rY])", UNINIT_LINE_NUM},
     {E616_OPERAND_MAT_INDEX_OUT_OF_BOUNDS, "Matrix indices must use valid registers (r0–r7)", UNINIT_LINE_NUM},
-    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
+    {W617_OPERAND_MAT_INITIALIZED_UNDER, "Not enough matrix initializers for defined size, matrix is filled with zero values", UNINIT_LINE_NUM, SEV_WARNING},
     {W618_OPERAND_MAT_INITIALIZED_OVER, "Too many matrix initializers for defined size", UNINIT_LINE_NUM, SEV_WARNING},
 
     /* ──────── Memory Errors & Warnings ──────── */
